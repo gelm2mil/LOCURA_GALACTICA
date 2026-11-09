@@ -1,8 +1,17 @@
-/* =================================
+
+/* =========================================
    LOCURA GALÁCTICA
-   Hoja de estilos principal
+   IDENTIDAD VISUAL PRINCIPAL
    BY GELM
-================================= */
+========================================= */
+
+:root {
+    --negro: #05000d;
+    --cyan: #00eaff;
+    --verde: #00ffc8;
+    --magenta: #b300ff;
+    --blanco: #ffffff;
+}
 
 * {
     margin: 0;
@@ -10,8 +19,96 @@
     box-sizing: border-box;
 }
 
+html,
 body {
-    background: #05000d;
-    color: #ffffff;
+    width: 100%;
+    min-height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    background:
+        radial-gradient(ellipse at 50% 45%,
+            #17102e 0%,
+            #090414 45%,
+            var(--negro) 100%);
+    color: var(--blanco);
     font-family: Arial, sans-serif;
+}
+
+/* PANTALLA PRINCIPAL */
+
+#universo {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 30px 20px;
+    position: relative;
+}
+
+/* ILUMINACIÓN AMBIENTAL */
+
+#universo::before {
+    content: "";
+    position: absolute;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: var(--magenta);
+    opacity: 0.08;
+    filter: blur(90px);
+    pointer-events: none;
+}
+
+/* TÍTULO */
+
+h1 {
+    position: relative;
+    color: var(--blanco);
+    font-size: clamp(2rem, 6vw, 4.5rem);
+    letter-spacing: 5px;
+    text-shadow:
+        0 0 10px var(--cyan),
+        0 0 25px var(--cyan),
+        0 0 45px var(--magenta);
+    margin-bottom: 25px;
+}
+
+/* MENSAJES */
+
+#universo p {
+    position: relative;
+    max-width: 700px;
+    line-height: 1.7;
+    font-size: clamp(0.95rem, 2vw, 1.2rem);
+    color: #d8d5e8;
+    margin-bottom: 12px;
+}
+
+/* ESTADO DEL UNIVERSO */
+
+#estado-universo {
+    position: relative;
+    margin-top: 35px;
+    color: var(--verde);
+    letter-spacing: 3px;
+    font-size: 0.8rem;
+    text-shadow: 0 0 12px var(--verde);
+}
+
+/* PANTALLAS PEQUEÑAS */
+
+@media (max-width: 600px) {
+    h1 {
+        letter-spacing: 2px;
+    }
+
+    #universo {
+        padding: 20px;
+    }
 }
