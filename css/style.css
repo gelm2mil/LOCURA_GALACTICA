@@ -1,0 +1,17 @@
+/* =================================
+   LOCURA GALÁCTICA
+   Hoja de estilos principal
+   BY GELM
+================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #05000d;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
+}
