@@ -4,323 +4,291 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#030611">
-<title>LOCURA GALÁCTICA — Laboratorio de Combate</title>
+<title>LOCURA GALÁCTICA — Universo Expandido</title>
 <style>
 *{box-sizing:border-box}
 html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#030611;color:#00eaff;font-family:Arial,sans-serif}
 #juego{display:block;width:100%;height:100%;cursor:crosshair}
-#interfaz{position:fixed;top:15px;left:15px;z-index:2;padding:12px 16px;background:rgba(2,10,25,.9);border:1px solid #00eaff;border-radius:8px;box-shadow:0 0 15px rgba(0,234,255,0.35);pointer-events:none;font-size:13px;line-height:1.45}
+#interfaz{position:fixed;top:15px;left:15px;z-index:2;padding:12px 16px;background:rgba(2,10,25,.9);border:1px solid #00eaff;border-radius:8px;box-shadow:0 0 15px #00eaff55;pointer-events:none;font-size:13px;line-height:1.45;min-width:260px}
 #interfaz strong{color:white;letter-spacing:2px}
-#instrucciones{color:#b8dce9;font-size:12px;margin-top:7px}
-.barra{display:grid;grid-template-columns:105px minmax(90px,170px) 66px;gap:7px;align-items:center;margin-top:7px;color:#d8f5ff;font-size:10px}
+#instrucciones{color:#b8dce9;font-size:11px;margin-top:7px;border-top:1px solid #00eaff33;padding-top:5px}
+.barra{display:grid;grid-template-columns:105px minmax(90px,170px) 66px;gap:7px;align-items:center;margin-top:5px;color:#d8f5ff;font-size:10px}
 .barra b{text-align:right;font-size:10px;color:#fff;font-weight:normal}
 .pista{height:7px;background:#172638;border:1px solid #476078;border-radius:8px;overflow:hidden}
 .pista i{display:block;width:100%;height:100%;border-radius:8px;transition:width .12s linear}
 #escudoNaveBarra{background:linear-gradient(90deg,#007ca8,#00eaff);box-shadow:0 0 8px #00eaff}
 #vidaNaveBarra{background:linear-gradient(90deg,#168c48,#4dff91);box-shadow:0 0 8px #35e58b}
-#misilBarra{background:linear-gradient(90deg,#b35900,#ff9d00);box-shadow:0 0 8px #ff9d00}
-#volver{position:fixed;right:15px;top:15px;z-index:3;padding:10px 14px;color:#00eaff;background:#061426;border:1px solid #00eaff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:bold;transition:all 0.2s ease}
-#volver:hover{background:#00eaff;color:#030611;box-shadow:0 0 12px #00eaff}
+#misilNaveBarra{background:linear-gradient(90deg,#cc5200,#ff9d00);box-shadow:0 0 8px #ff9d00}
+#creditosUI{color:#ffd700;font-weight:bold;margin-top:4px}
+#volver{position:fixed;right:15px;top:15px;z-index:3;padding:10px 14px;color:#00eaff;background:#061426;border:1px solid #00eaff;border-radius:6px;text-decoration:none}
 </style>
 </head>
 <body>
 <div id="interfaz">
   <strong>LOCURA GALÁCTICA</strong>
-  <div>GRUPTO — NAVEGACIÓN Y COMBATE</div>
+  <div>SECTOR EXPANDIDO [5000 x 5000]</div>
   <div id="estadisticas">Objetivos: 0 | Destruidos: 0</div>
+  <div id="creditosUI">Créditos: 0 C | Muestra: 0 N3</div>
   <div id="estado">Estado: Explorando</div>
   <div id="objetivoUI">Objetivo: Ninguno</div>
   <div class="barra"><span>ESCUDO GRUPTO</span><div class="pista"><i id="escudoNaveBarra"></i></div><b id="escudoNaveTexto">100 / 100</b></div>
   <div class="barra"><span>VIDA GRUPTO</span><div class="pista"><i id="vidaNaveBarra"></i></div><b id="vidaNaveTexto">100 / 100</b></div>
-  <div class="barra"><span>SISTEMA MISIL</span><div class="pista"><i id="misilBarra"></i></div><b id="misilTexto">LISTO</b></div>
+  <div class="barra"><span>RECARGA MISIL</span><div class="pista"><i id="misilNaveBarra"></i></div><b id="misilNaveTexto">LISTO</b></div>
   <div id="instrucciones">
-    Clic: seleccionar enemigo<br>
-    Doble clic: activar ataque<br>
-    Mouse presionado: maniobrar<br>
-    CTRL: activar disparo<br>
-    ESPACIO: misil guiado (Requiere objetivo)
+    Clic: seleccionar enemigo / fijar destino<br>
+    Doble clic: activar ataque continuo<br>
+    Mouse presionado: maniobrar libremente<br>
+    CTRL: activar/desactivar ataque<br>
+    ESPACIO: lanzar misil guiado<br>
+    <b>R: reparar nave en zona segura</b>
   </div>
 </div>
 <a id="volver" href="index.html">SALIR</a>
-<canvas id="juego" tabindex="0"></canvas>
-
+<canvas id="juego"></canvas>
 <script>
 "use strict";
-const canvas = document.getElementById("juego");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("juego");
+const ctx=canvas.getContext("2d");
 
-// Enemigo provisional del laboratorio: Annihilator.
-const imagenEnemigo = new Image();
-imagenEnemigo.src = "https://raw.githubusercontent.com/gelm2mil/LOCURA_GALACTICA/main/assets/images/Annihilator.png";
+// Carga de recursos
+const imagenEnemigo=new Image();
+imagenEnemigo.src="https://raw.githubusercontent.com/gelm2mil/LOCURA_GALACTICA/main/assets/images/Annihilator.png";
+const imagenGrupTo=new Image();
+imagenGrupTo.src="https://raw.githubusercontent.com/gelm2mil/LOCURA_GALACTICA/main/assets/images/GRUPTO.png";
 
-// GRUPTO: nave del jugador (recurso PNG del repositorio).
-const imagenGrupTo = new Image();
-imagenGrupTo.src = "https://raw.githubusercontent.com/gelm2mil/LOCURA_GALACTICA/main/assets/images/GRUPTO.png";
-imagenGrupTo.onload = () => console.info("GRUPTO cargada correctamente.");
-imagenGrupTo.onerror = () => console.error("No se pudo cargar GRUPTO.png; revisa el archivo en assets/images.");
-imagenEnemigo.onload = () => console.info("ANNIHILATOR cargado correctamente.");
-imagenEnemigo.onerror = () => console.error("No se pudo cargar Annihilator.png; revisa nombre y publicación en GitHub Pages.");
+// Elementos de la interfaz
+const estadisticas=document.getElementById("estadisticas");
+const creditosUI=document.getElementById("creditosUI");
+const estado=document.getElementById("estado");
+const objetivoUI=document.getElementById("objetivoUI");
+const escudoNaveBarra=document.getElementById("escudoNaveBarra");
+const vidaNaveBarra=document.getElementById("vidaNaveBarra");
+const misilNaveBarra=document.getElementById("misilNaveBarra");
+const escudoNaveTexto=document.getElementById("escudoNaveTexto");
+const vidaNaveTexto=document.getElementById("vidaNaveTexto");
+const misilNaveTexto=document.getElementById("misilNaveTexto");
 
-const estadisticas = document.getElementById("estadisticas");
-const estado = document.getElementById("estado");
-const objetivoUI = document.getElementById("objetivoUI");
-const escudoNaveBarra = document.getElementById("escudoNaveBarra");
-const vidaNaveBarra = document.getElementById("vidaNaveBarra");
-const escudoNaveTexto = document.getElementById("escudoNaveTexto");
-const vidaNaveTexto = document.getElementById("vidaNaveTexto");
-const misilBarra = document.getElementById("misilBarra");
-const misilTexto = document.getElementById("misilTexto");
+// Configuración del Universo Expandido (5000 x 5000 píxeles)
+const MAPA_ANCHO = 5000;
+const MAPA_ALTO = 5000;
+const CAMARA = { x: 0, y: 0 };
 
-let ancho, alto, disparos = [], disparosEnemigos = [], misiles = [], enemigos = [], particulas = [], estrellas = [];
-let destruidos = 0, ultimoDisparo = 0, ultimoImpactoNave = 0, ultimoMisil = 0;
-const TIEMPO_RECARGA_MISIL = 2500; // 2.5 segundos
+let ancho, alto, escala = 1;
+let disparos = [], disparosEnemigos = [], enemigos = [], particulas = [], misiles = [], cajasCarga = [], estrellas = [], nebulosas = [];
+let destruidos = 0, creditos = 0, mineral = 0, ultimoDisparo = 0, ultimoImpactoNave = 0, ultimoMisil = 0, reparando = false;
+const COOLDOWN_MISIL = 2500;
 
 const teclas = {};
 const nave = {
-  x: 0, y: 0, angulo: 0, velocidad: 0, velocidadMaxima: 4.2, 
-  aceleracion: 0.13, frenado: 0.94, destinoX: null, destinoY: null, 
-  seleccionado: null, atacando: false, ordenManual: false, 
+  x: MAPA_ANCHO / 2, y: MAPA_ALTO / 2,
+  angulo: 0, velocidad: 0, velocidadMaxima: 5.2, aceleracion: .18, frenado: .95,
+  destinoX: null, destinoY: null, seleccionado: null, atacando: false, ordenManual: false,
   escudo: 100, escudoMaximo: 100, vida: 100, vidaMaxima: 100
 };
-const mouse = { x: 0, y: 0, izquierdo: false };
+const mouse = { x: 0, y: 0, mundoX: 0, mundoY: 0, izquierdo: false };
 
-function ajustar() {
-  const escala = Math.min(window.devicePixelRatio || 1, 2);
-  ancho = window.innerWidth;
-  alto = window.innerHeight;
-  canvas.width = ancho * escala;
-  canvas.height = alto * escala;
+// Base Espacial / Zona Segura (Portal de salto o Estación)
+const baseEspacial = { x: MAPA_ANCHO / 2, y: MAPA_ALTO / 2, radio: 220 };
+
+function ajustar(){
+  escala = Math.min(window.devicePixelRatio || 1, 2);
+  ancho = window.innerWidth; alto = window.innerHeight;
+  canvas.width = ancho * escala; canvas.height = alto * escala;
   ctx.setTransform(escala, 0, 0, escala, 0, 0);
-  if (!nave.x) { nave.x = ancho / 2; nave.y = alto / 2; }
-  estrellas = Array.from({ length: 130 }, () => ({ x: Math.random() * ancho, y: Math.random() * alto, r: Math.random() * 1.4 + 0.3 }));
+  
+  if (estrellas.length === 0) {
+    // Fondo de estrellas distribuidas por el universo masivo con profundidad (capas)
+    estrellas = Array.from({length: 1200}, () => ({
+      x: Math.random() * MAPA_ANCHO,
+      y: Math.random() * MAPA_ALTO,
+      r: Math.random() * 1.8 + .3,
+      profundidad: Math.random() * 0.7 + 0.3
+    }));
+    // Nebulosas para ambiente espacial
+    nebulosas = Array.from({length: 12}, () => ({
+      x: Math.random() * MAPA_ANCHO,
+      y: Math.random() * MAPA_ALTO,
+      r: 300 + Math.random() * 400,
+      color: Math.random() < 0.5 ? "rgba(0, 150, 255, 0.05)" : "rgba(255, 0, 150, 0.04)"
+    }));
+  }
 }
 window.addEventListener("resize", ajustar);
 ajustar();
 
-function aplicarDano(objetivo, dano) {
-  const danoEscudo = dano * 0.6;
-  const danoVida = dano * 0.4;
-  
-  if (objetivo.escudo >= danoEscudo) {
-    objetivo.escudo -= danoEscudo;
-    objetivo.vida = Math.max(0, objetivo.vida - danoVida);
-  } else {
-    const remanente = danoEscudo - objetivo.escudo;
-    objetivo.escudo = 0;
-    objetivo.vida = Math.max(0, objetivo.vida - (danoVida + remanente));
-  }
-}
-
-function regenerarEscudos() {
-  const ahora = performance.now();
-  // Si transcurrieron más de 4000ms sin recibir impactos, recargar escudo de GRUPTO
-  if (ahora - ultimoImpactoNave > 4000 && nave.escudo < nave.escudoMaximo) {
-    nave.escudo = Math.min(nave.escudoMaximo, nave.escudo + 0.15);
-  }
-
-  // Regeneración suave para los enemigos
-  enemigos.forEach(e => {
-    if (e.escudo < e.escudoMaximo) {
-      e.escudo = Math.min(e.escudoMaximo, e.escudo + 0.05);
+function aplicarDano(objetivo, dano){
+  const danoEscudo = dano * .7;
+  const danoVida = dano * .3;
+  if (objetivo.escudo > 0) {
+    if (objetivo.escudo >= danoEscudo) {
+      objetivo.escudo -= danoEscudo;
+      objetivo.vida = Math.max(0, objetivo.vida - danoVida);
+    } else {
+      const resto = danoEscudo - objetivo.escudo;
+      objetivo.escudo = 0;
+      objetivo.vida = Math.max(0, objetivo.vida - (danoVida + resto));
     }
-  });
+  } else {
+    objetivo.vida = Math.max(0, objetivo.vida - dano);
+  }
 }
 
-function actualizarBarrasNave() {
+function actualizarBarras(){
   escudoNaveBarra.style.width = (nave.escudo / nave.escudoMaximo * 100) + "%";
   vidaNaveBarra.style.width = (nave.vida / nave.vidaMaxima * 100) + "%";
   escudoNaveTexto.textContent = Math.ceil(nave.escudo) + " / " + nave.escudoMaximo;
   vidaNaveTexto.textContent = Math.ceil(nave.vida) + " / " + nave.vidaMaxima;
 
-  // Estado del misil guiado
-  const tiempoTranscurrido = performance.now() - ultimoMisil;
-  const porcentajeMisil = Math.min(100, (tiempoTranscurrido / TIEMPO_RECARGA_MISIL) * 100);
-  misilBarra.style.width = porcentajeMisil + "%";
-  if (porcentajeMisil >= 100) {
-    misilTexto.textContent = "LISTO";
-    misilTexto.style.color = "#4dff91";
-  } else {
-    misilTexto.textContent = ((TIEMPO_RECARGA_MISIL - tiempoTranscurrido) / 1000).toFixed(1) + "s";
-    misilTexto.style.color = "#ff9d00";
-  }
+  const tiempoMisil = performance.now() - ultimoMisil;
+  const pctMisil = Math.min(100, (tiempoMisil / COOLDOWN_MISIL) * 100);
+  misilNaveBarra.style.width = pctMisil + "%";
+  misilNaveTexto.textContent = pctMisil >= 100 ? "LISTO" : Math.ceil((COOLDOWN_MISIL - tiempoMisil) / 1000) + "s";
+  creditosUI.textContent = `Créditos: ${creditos} C | Muestra: ${mineral} N3`;
 }
 
-function crearEnemigo() {
-  const lado = Math.floor(Math.random() * 4);
-  let x = 0, y = 0;
-  if (lado === 0) { x = Math.random() * ancho; y = -30; }
-  if (lado === 1) { x = ancho + 30; y = Math.random() * alto; }
-  if (lado === 2) { x = Math.random() * ancho; y = alto + 30; }
-  if (lado === 3) { x = -30; y = Math.random() * alto; }
+function crearEnemigo(){
+  const a = Math.random() * Math.PI * 2;
+  const dist = 600 + Math.random() * 1800;
+  const x = Math.max(100, Math.min(MAPA_ANCHO - 100, nave.x + Math.cos(a) * dist));
+  const y = Math.max(100, Math.min(MAPA_ALTO - 100, nave.y + Math.sin(a) * dist));
+  
   enemigos.push({
-    x, y, escudo: 70, escudoMaximo: 70, vida: 50, vidaMaxima: 50,
-    radio: 17 + Math.random() * 4, velocidad: 0.45 + Math.random() * 0.3,
-    destruido: false, fase: Math.random() * Math.PI * 2, giro: Math.random() < 0.5 ? -1 : 1,
-    tipo: 3, pulso: Math.random() * Math.PI * 2, proximoDisparo: performance.now() + 900 + Math.random() * 1300
+    x, y, escudo: 80, escudoMaximo: 80, vida: 60, vidaMaxima: 60,
+    radio: 20 + Math.random() * 4, velocidad: .7 + Math.random() * .4, destruido: false,
+    fase: Math.random() * Math.PI * 2, tipo: Math.floor(Math.random() * 3),
+    pulso: Math.random() * Math.PI * 2, proximoDisparo: performance.now() + 800 + Math.random() * 1200
   });
 }
-for (let i = 0; i < 6; i++) crearEnemigo();
+for (let i = 0; i < 22; i++) crearEnemigo();
 
-function crearGrupToPrueba() {
-  enemigos.push({
-    x: ancho * 0.68, y: alto * 0.48,
-    escudo: 180, escudoMaximo: 180, vida: 180, vidaMaxima: 180,
-    radio: 24, velocidad: 0.28, destruido: false,
-    fase: Math.random() * Math.PI * 2, giro: 1, tipo: 3,
-    pulso: Math.random() * Math.PI * 2, proximoDisparo: performance.now() + 900 + Math.random() * 1300,
-    esGrupToPrueba: true
-  });
-}
-crearGrupToPrueba();
-
-function seleccionarEnemigo(e) {
-  nave.seleccionado = e;
-  nave.atacando = false;
-  nave.destinoX = null;
-  nave.destinoY = null;
-  nave.velocidad = 0;
-  nave.ordenManual = false;
+function seleccionarEnemigo(e){
+  nave.seleccionado = e; nave.atacando = false; nave.destinoX = null; nave.destinoY = null;
   estado.textContent = "Estado: Objetivo seleccionado";
-  objetivoUI.textContent = "Objetivo: Seleccionado — esperando orden";
+  objetivoUI.textContent = "Objetivo: " + (e.esGrupToPrueba ? "Comandante Elite" : "Annihilator NPC");
 }
 
-function iniciarAtaque() {
+function iniciarAtaque(){
   if (!nave.seleccionado || !enemigos.includes(nave.seleccionado)) return;
-  nave.atacando = true;
-  nave.destinoX = null;
-  nave.destinoY = null;
-  nave.ordenManual = false;
+  nave.atacando = true; nave.destinoX = null; nave.destinoY = null; nave.ordenManual = false;
   estado.textContent = "Estado: Atacando objetivo";
   objetivoUI.textContent = "Objetivo: Ataque activo";
 }
 
-function dispararMisil() {
+function dispararMisil(){
   if (!nave.seleccionado || !enemigos.includes(nave.seleccionado)) return;
   const ahora = performance.now();
-  if (ahora - ultimoMisil < TIEMPO_RECARGA_MISIL) return;
+  if (ahora - ultimoMisil < COOLDOWN_MISIL) return;
   ultimoMisil = ahora;
 
   const a = nave.angulo;
   misiles.push({
-    x: nave.x + Math.cos(a) * 25,
-    y: nave.y + Math.sin(a) * 25,
-    vx: Math.cos(a) * 4,
-    vy: Math.sin(a) * 4,
-    vida: 140,
-    objetivo: nave.seleccionado,
-    gastado: false
+    x: nave.x + Math.cos(a) * 25, y: nave.y + Math.sin(a) * 25,
+    vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+    vida: 140, objetivo: nave.seleccionado
   });
 }
 
+// Eventos de control y transformación de Coordenadas de Cámara
 window.addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   teclas[k] = true;
-  if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k)) e.preventDefault();
-
-  if (e.key === "Control" && !e.repeat) {
-    e.preventDefault();
-    iniciarAtaque();
-  }
-  if (e.code === "Space" && !e.repeat) {
-    dispararMisil();
-  }
-}, { capture: true });
-
-window.addEventListener("keyup", e => {
-  teclas[e.key.toLowerCase()] = false;
-});
-
-document.addEventListener("keydown", e => {
-  if (e.key === "Control" && !e.repeat) {
-    e.preventDefault();
-    iniciarAtaque();
-  }
-});
-
-canvas.addEventListener("mousemove", e => {
-  const r = canvas.getBoundingClientRect();
-  mouse.x = e.clientX - r.left;
-  mouse.y = e.clientY - r.top;
-  if (mouse.izquierdo) {
-    nave.destinoX = mouse.x;
-    nave.destinoY = mouse.y;
-    nave.ordenManual = true;
-  }
-});
-
-canvas.addEventListener("pointerdown", e => {
-  if (e.button !== 0) return;
-  canvas.focus({ preventScroll: true });
-  mouse.izquierdo = true;
-  const r = canvas.getBoundingClientRect();
-  mouse.x = e.clientX - r.left;
-  mouse.y = e.clientY - r.top;
-  if (nave.atacando) {
-    nave.destinoX = mouse.x;
-    nave.destinoY = mouse.y;
-    nave.ordenManual = true;
-  }
-});
-
-window.addEventListener("pointerup", e => {
-  if (e.button === 0) {
-    mouse.izquierdo = false;
-    if (nave.atacando) {
-      nave.destinoX = null;
-      nave.destinoY = null;
-      nave.ordenManual = true;
-      nave.velocidad = 0;
+  if (["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k)) e.preventDefault();
+  if (e.key === "Control" && !e.repeat) { e.preventDefault(); if (nave.atacando) nave.atacando = false; else iniciarAtaque(); }
+  if (e.code === "Space" && !e.repeat) dispararMisil();
+  if (k === "r" && !e.repeat) {
+    const distBase = Math.hypot(nave.x - baseEspacial.x, nave.y - baseEspacial.y);
+    if (distBase <= baseEspacial.radio) {
+      reparando = true;
+      estado.textContent = "Estado: Reparando nave en base...";
+    } else {
+      estado.textContent = "Estado: ¡Debes estar dentro de la Base Espacial!";
     }
   }
 });
-canvas.addEventListener("pointercancel", () => { mouse.izquierdo = false; });
-canvas.addEventListener("contextmenu", e => e.preventDefault());
+window.addEventListener("keyup", e => teclas[e.key.toLowerCase()] = false);
 
-function enemigoBajoPuntero(x, y) {
+function actualizarMouseMundo(e){
+  const r = canvas.getBoundingClientRect();
+  mouse.x = e.clientX - r.left;
+  mouse.y = e.clientY - r.top;
+  mouse.mundoX = mouse.x + CAMARA.x;
+  mouse.mundoY = mouse.y + CAMARA.y;
+}
+
+canvas.addEventListener("mousemove", e => {
+  actualizarMouseMundo(e);
+  if (mouse.izquierdo) {
+    nave.destinoX = mouse.mundoX;
+    nave.destinoY = mouse.mundoY;
+    nave.ordenManual = true;
+  }
+});
+canvas.addEventListener("pointerdown", e => {
+  if (e.button !== 0) return;
+  canvas.focus({preventScroll:true});
+  mouse.izquierdo = true;
+  actualizarMouseMundo(e);
+  if (nave.atacando) {
+    nave.destinoX = mouse.mundoX;
+    nave.destinoY = mouse.mundoY;
+    nave.ordenManual = true;
+  }
+});
+window.addEventListener("pointerup", e => {
+  if (e.button === 0) {
+    mouse.izquierdo = false;
+    if (nave.atacando) { nave.destinoX = null; nave.destinoY = null; nave.velocidad = 0; }
+  }
+});
+
+function enemigoBajoPuntero(mx, my){
   let elegido = null, menor = Infinity;
   for (const e of enemigos) {
-    const d = Math.hypot(x - e.x, y - e.y);
-    if (d <= e.radio + 13 && d < menor) { elegido = e; menor = d; }
+    const d = Math.hypot(mx - e.x, my - e.y);
+    if (d <= e.radio + 15 && d < menor) { elegido = e; menor = d; }
   }
   return elegido;
 }
 
 canvas.addEventListener("click", e => {
   if (e.button !== 0) return;
-  const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  const enemigo = enemigoBajoPuntero(x, y);
+  actualizarMouseMundo(e);
+  const enemigo = enemigoBajoPuntero(mouse.mundoX, mouse.mundoY);
 
   if (enemigo) {
     if (nave.seleccionado !== enemigo) seleccionarEnemigo(enemigo);
   } else {
-    nave.destinoX = x;
-    nave.destinoY = y;
+    nave.destinoX = mouse.mundoX;
+    nave.destinoY = mouse.mundoY;
     nave.ordenManual = true;
-    estado.textContent = nave.atacando ? "Estado: Atacando y navegando" : "Estado: Navegando";
+    estado.textContent = nave.atacando ? "Estado: Atacando y maniobrando" : "Estado: Navegando";
   }
 });
-
 canvas.addEventListener("dblclick", e => {
   if (e.button !== 0) return;
-  const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-  const enemigo = enemigoBajoPuntero(x, y);
+  actualizarMouseMundo(e);
+  const enemigo = enemigoBajoPuntero(mouse.mundoX, mouse.mundoY);
   if (enemigo) {
     if (nave.seleccionado !== enemigo) seleccionarEnemigo(enemigo);
     iniciarAtaque();
   }
 });
 
-function disparar(automatico = false) {
+function disparar(automatico = false){
   const objetivo = automatico ? nave.seleccionado : null;
   const a = objetivo ? Math.atan2(objetivo.y - nave.y, objetivo.x - nave.x) : nave.angulo;
-  disparos.push({ x: nave.x + Math.cos(a) * 27, y: nave.y + Math.sin(a) * 27, vx: Math.cos(a) * 12, vy: Math.sin(a) * 12, vida: 55, gastado: false, objetivo });
+  disparos.push({
+    x: nave.x + Math.cos(a) * 27, y: nave.y + Math.sin(a) * 27,
+    vx: Math.cos(a) * 14, vy: Math.sin(a) * 14,
+    vida: 60, gastado: false, objetivo
+  });
 }
 
-function explosion(x, y, color) {
-  particulas.push({ x, y, vx: 0, vy: 0, vida: 13, vidaMax: 13, color, tipo: "flash", radio: 5 });
-  particulas.push({ x, y, vx: 0, vy: 0, vida: 24, vidaMax: 24, color, tipo: "anillo", radio: 5 });
-  for (let i = 0; i < 34; i++) {
-    const a = Math.random() * Math.PI * 2, v = Math.random() * 6 + 1.4;
+function explosion(x, y, color){
+  particulas.push({x, y, vx: 0, vy: 0, vida: 13, vidaMax: 13, color, tipo: "flash", radio: 6});
+  particulas.push({x, y, vx: 0, vy: 0, vida: 24, vidaMax: 24, color, tipo: "anillo", radio: 6});
+  for (let i = 0; i < 30; i++) {
+    const a = Math.random() * Math.PI * 2, v = Math.random() * 6 + 1.5;
     particulas.push({
       x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
       vida: 18 + Math.random() * 22, vidaMax: 40,
@@ -330,218 +298,304 @@ function explosion(x, y, color) {
   }
 }
 
-function dispararEnemigo(e) {
+function dispararEnemigo(e){
   const angulo = Math.atan2(nave.y - e.y, nave.x - e.x);
-  const acierta = Math.random() < 0.82;
-  const desviacion = (Math.random() < 0.5 ? -1 : 1) * (0.42 + Math.random() * 0.28);
-  const velocidad = 5.2;
+  const acierta = Math.random() < .85;
+  const desviacion = (Math.random() < .5 ? -1 : 1) * (0.35 + Math.random() * .2);
+  const velocidad = 6.0;
   disparosEnemigos.push({
     x: e.x + Math.cos(angulo) * 22, y: e.y + Math.sin(angulo) * 22,
     vx: Math.cos(angulo) * velocidad, vy: Math.sin(angulo) * velocidad,
-    vida: 90, danio: 7, acierta,
-    objetivoX: nave.x, objetivoY: nave.y,
-    desviacion, velocidad
+    vida: 100, danio: 8, acierta, desviacion, velocidad
   });
 }
 
-function girarHacia(destino) {
+function girarHacia(destino){
   let d = destino - nave.angulo;
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
-  nave.angulo += Math.max(-0.09, Math.min(0.09, d));
+  nave.angulo += Math.max(-.11, Math.min(.11, d));
 }
 
-function actualizarMovimiento() {
+function actualizarMovimiento(){
   let dx = 0, dy = 0;
-  if (teclas.w || teclas.arrowup) dy--;
-  if (teclas.s || teclas.arrowdown) dy++;
-  if (teclas.a || teclas.arrowleft) dx--;
-  if (teclas.d || teclas.arrowright) dx++;
-
+  if (teclas.w || teclas.arrowup) dy--; if (teclas.s || teclas.arrowdown) dy++;
+  if (teclas.a || teclas.arrowleft) dx--; if (teclas.d || teclas.arrowright) dx++;
+  
   if (dx || dy) {
-    nave.destinoX = null; nave.destinoY = null; nave.seleccionado = null; nave.atacando = false;
-    objetivoUI.textContent = "Objetivo: Ninguno"; girarHacia(Math.atan2(dy, dx));
+    nave.destinoX = null; nave.destinoY = null;
+    girarHacia(Math.atan2(dy, dx));
     nave.velocidad = Math.min(nave.velocidad + nave.aceleracion, nave.velocidadMaxima);
-    nave.x += Math.cos(nave.angulo) * nave.velocidad; nave.y += Math.sin(nave.angulo) * nave.velocidad;
-    estado.textContent = "Estado: Movimiento manual";
+    nave.x += Math.cos(nave.angulo) * nave.velocidad;
+    nave.y += Math.sin(nave.angulo) * nave.velocidad;
+    reparando = false;
   } else if (nave.atacando && nave.seleccionado && enemigos.includes(nave.seleccionado)) {
     const e = nave.seleccionado, d = Math.hypot(e.x - nave.x, e.y - nave.y);
     if (mouse.izquierdo && nave.destinoX !== null && nave.destinoY !== null) {
       const vx = nave.destinoX - nave.x, vy = nave.destinoY - nave.y, distancia = Math.hypot(vx, vy);
       girarHacia(Math.atan2(e.y - nave.y, e.x - nave.x));
       if (distancia > 5) {
-        nave.velocidad = Math.min(nave.velocidad + nave.aceleracion * 1.7, nave.velocidadMaxima + 1.6);
+        nave.velocidad = Math.min(nave.velocidad + nave.aceleracion * 1.5, nave.velocidadMaxima);
         const avance = Math.min(nave.velocidad, distancia);
         nave.x += (vx / distancia) * avance; nave.y += (vy / distancia) * avance;
-      } else nave.velocidad *= nave.frenado;
-      estado.textContent = "Estado: Atacando — maniobra con mouse";
+      }
     } else if (!nave.ordenManual) {
       girarHacia(Math.atan2(e.y - nave.y, e.x - nave.x));
-      if (d > 230) {
+      if (d > 260) {
         nave.velocidad = Math.min(nave.velocidad + nave.aceleracion, nave.velocidadMaxima);
-        nave.x += Math.cos(nave.angulo) * nave.velocidad; nave.y += Math.sin(nave.angulo) * nave.velocidad;
+        nave.x += Math.cos(nave.angulo) * nave.velocidad;
+        nave.y += Math.sin(nave.angulo) * nave.velocidad;
       } else nave.velocidad *= nave.frenado;
-      estado.textContent = "Estado: Atacando objetivo";
-    } else {
-      nave.velocidad = 0;
-      estado.textContent = "Estado: Atacando desde posición";
     }
-    if (d < 750 && performance.now() - ultimoDisparo > 330) {
-      disparar(true);
-      ultimoDisparo = performance.now();
+    if (d < 800 && performance.now() - ultimoDisparo > 310) {
+      disparar(true); ultimoDisparo = performance.now();
     }
-    objetivoUI.textContent = "Objetivo: Ataque activo";
   } else if (nave.destinoX !== null && nave.destinoY !== null) {
     const vx = nave.destinoX - nave.x, vy = nave.destinoY - nave.y, d = Math.hypot(vx, vy);
-    if (d > 9) {
+    if (d > 10) {
       girarHacia(Math.atan2(vy, vx));
       nave.velocidad = Math.min(nave.velocidad + nave.aceleracion, nave.velocidadMaxima);
       const avance = Math.min(nave.velocidad, d);
       nave.x += Math.cos(nave.angulo) * avance; nave.y += Math.sin(nave.angulo) * avance;
     } else {
       nave.velocidad *= nave.frenado;
-      if (nave.velocidad < 0.12) { nave.velocidad = 0; nave.destinoX = null; nave.destinoY = null; estado.textContent = "Estado: En posición"; }
+      if (nave.velocidad < .1) { nave.velocidad = 0; nave.destinoX = null; nave.destinoY = null; }
     }
   } else {
     nave.velocidad *= nave.frenado;
-    if (nave.velocidad < 0.08) nave.velocidad = 0;
+    if (nave.velocidad < .08) nave.velocidad = 0;
   }
-  nave.x = Math.max(25, Math.min(ancho - 25, nave.x));
-  nave.y = Math.max(25, Math.min(alto - 25, nave.y));
+
+  // Límites del mapa masivo
+  nave.x = Math.max(30, Math.min(MAPA_ANCHO - 30, nave.x));
+  nave.y = Math.max(30, Math.min(MAPA_ALTO - 30, nave.y));
+
+  // Actualización Suave de Cámara centrada en la Nave
+  CAMARA.x = nave.x - ancho / 2;
+  CAMARA.y = nave.y - alto / 2;
 }
 
-function actualizar() {
+function actualizar(){
   actualizarMovimiento();
-  regenerarEscudos();
 
-  // Actualizar láseres del jugador
-  disparos.forEach(d => { d.x += d.vx; d.y += d.vy; d.vida--; });
-  disparos = disparos.filter(d => d.vida > 0);
+  // Reparación e Inmunidad en Base Espacial
+  const distBase = Math.hypot(nave.x - baseEspacial.x, nave.y - baseEspacial.y);
+  if (reparando && distBase <= baseEspacial.radio) {
+    nave.vida = Math.min(nave.vidaMaxima, nave.vida + 0.4);
+    nave.escudo = Math.min(nave.escudoMaximo, nave.escudo + 0.6);
+    if (nave.vida >= nave.vidaMaxima && nave.escudo >= nave.escudoMaximo) {
+      reparando = false;
+      estado.textContent = "Estado: Reparación completa";
+    }
+  }
 
-  // Actualizar misiles guiados
+  // Regeneración Pasiva de Escudo fuera de combate (4 segundos sin daños)
+  if (performance.now() - ultimoImpactoNave > 4000 && nave.escudo < nave.escudoMaximo && !reparando) {
+    nave.escudo = Math.min(nave.escudoMaximo, nave.escudo + 0.15);
+  }
+
+  // Misiles Guiados
   misiles.forEach(m => {
     m.vida--;
-    if (m.objetivo && enemigos.includes(m.objetivo) && !m.objetivo.destruido) {
-      const dx = m.objetivo.x - m.x;
-      const dy = m.objetivo.y - m.y;
+    if (m.objetivo && enemigos.includes(m.objetivo)) {
+      const dx = m.objetivo.x - m.x, dy = m.objetivo.y - m.y;
       const anguloDeseado = Math.atan2(dy, dx);
       const anguloActual = Math.atan2(m.vy, m.vx);
-
       let d = anguloDeseado - anguloActual;
       while (d > Math.PI) d -= Math.PI * 2;
       while (d < -Math.PI) d += Math.PI * 2;
+      const nuevoAng = anguloActual + Math.sign(d) * Math.min(Math.abs(d), 0.14);
+      const vel = 9.5;
+      m.vx = Math.cos(nuevoAng) * vel; m.vy = Math.sin(nuevoAng) * vel;
 
-      const nuevoAngulo = anguloActual + Math.sign(d) * Math.min(Math.abs(d), 0.14);
-      const vel = 8.8;
-      m.vx = Math.cos(nuevoAngulo) * vel;
-      m.vy = Math.sin(nuevoAngulo) * vel;
-
-      // Colisión con el objetivo
-      if (Math.hypot(dx, dy) < m.objetivo.radio + 12) {
-        m.gastado = true;
+      if (Math.hypot(dx, dy) < m.objetivo.radio + 10) {
         m.vida = 0;
-        aplicarDano(m.objetivo, 35);
+        aplicarDano(m.objetivo, 38);
         explosion(m.x, m.y, "#ff9d00");
-        if (m.objetivo.vida <= 0 && !m.objetivo.destruido) {
-          m.objetivo.destruido = true;
-          destruidos++;
-          explosion(m.objetivo.x, m.objetivo.y, "#ff2b91");
-          if (nave.seleccionado === m.objetivo) {
-            nave.seleccionado = null;
-            nave.atacando = false;
-            objetivoUI.textContent = "Objetivo: Destruido";
-            estado.textContent = "Estado: Objetivo destruido";
-          }
-        }
       }
     } else {
-      // Inercia libre si el objetivo fue destruido
-      m.vx *= 0.99;
-      m.vy *= 0.99;
+      m.x += m.vx; m.y += m.vy;
     }
-    m.x += m.vx;
-    m.y += m.vy;
-
-    // Partículas de estela de motor del misil
+    // Estela del misil
     if (Math.random() < 0.6) {
-      particulas.push({
-        x: m.x, y: m.y, vx: -m.vx * 0.2 + (Math.random() - 0.5), vy: -m.vy * 0.2 + (Math.random() - 0.5),
-        vida: 12, vidaMax: 12, color: "#ff8c00", tipo: "chispa", radio: 1.8
-      });
+      particulas.push({x: m.x, y: m.y, vx: -m.vx*0.2, vy: -m.vy*0.2, vida: 12, vidaMax: 12, color: "#ffaa00", tipo: "chispa", radio: 2});
     }
   });
-  misiles = misiles.filter(m => m.vida > 0 && !m.gastado);
+  misiles = misiles.filter(m => m.vida > 0);
 
-  // Actualizar disparos enemigos
+  // Proyectiles del Jugador
+  disparos.forEach(d => { d.x += d.vx; d.y += d.vy; d.vida--; });
+  disparos = disparos.filter(d => d.vida > 0);
+
+  // Proyectiles Enemigos
   disparosEnemigos.forEach(d => {
     d.vida--;
     if (d.acierta) {
       const dx = nave.x - d.x, dy = nave.y - d.y;
-      const distancia = Math.hypot(dx, dy) || 1;
-      const objetivoVx = dx / distancia * d.velocidad, objetivoVy = dy / distancia * d.velocidad;
-      d.vx += (objetivoVx - d.vx) * 0.12; d.vy += (objetivoVy - d.vy) * 0.12;
-    } else if (!d.desvioAplicado) {
-      const ang = Math.atan2(d.vy, d.vx) + d.desviacion;
-      d.vx = Math.cos(ang) * d.velocidad; d.vy = Math.sin(ang) * d.velocidad;
-      d.desvioAplicado = true;
+      const dist = Math.hypot(dx, dy) || 1;
+      d.vx += ((dx / dist) * d.velocidad - d.vx) * .12;
+      d.vy += ((dy / dist) * d.velocidad - d.vy) * .12;
     }
     d.x += d.vx; d.y += d.vy;
-    if (d.acierta && !d.impactado && Math.hypot(d.x - nave.x, d.y - nave.y) < 27) {
+
+    // Si la nave está en la zona de la base, no sufre daños (Zona Segura)
+    if (distBase > baseEspacial.radio && d.acierta && !d.impactado && Math.hypot(d.x - nave.x, d.y - nave.y) < 27) {
       d.impactado = true; d.vida = 0;
-      const danoEscudo = d.danio * 0.8, danoVida = d.danio * 0.2;
-      nave.escudo = Math.max(0, nave.escudo - danoEscudo);
-      nave.vida = Math.max(0, nave.vida - danoVida);
+      aplicarDano(nave, d.danio);
       explosion(nave.x, nave.y, "#ff9b45");
       ultimoImpactoNave = performance.now();
     }
   });
   disparosEnemigos = disparosEnemigos.filter(d => d.vida > 0 && !d.impactado);
 
-  // Actualizar enemigos
+  // Lógica de Enemigos
   enemigos.forEach(e => {
-    e.fase += 0.035 + e.velocidad * 0.012;
+    e.fase += .035;
     const hacia = Math.atan2(nave.y - e.y, nave.x - e.x);
-    const distancia = Math.hypot(nave.x - e.x, nave.y - e.y);
-    const lateral = Math.sin(e.fase) * (0.45 + e.tipo * 0.16);
-    const avance = e.tipo === 0 ? e.velocidad * 0.72 : e.velocidad;
-    const orbita = e.tipo === 2 ? Math.cos(e.fase) * 0.45 : 0;
-    e.x += Math.cos(hacia) * avance + Math.cos(hacia + Math.PI / 2) * (lateral + orbita);
-    e.y += Math.sin(hacia) * avance + Math.sin(hacia + Math.PI / 2) * (lateral + orbita);
-    if (distancia < 115) { e.x -= Math.cos(hacia) * e.velocidad * 0.55; e.y -= Math.sin(hacia) * e.velocidad * 0.55; }
-
-    if (distancia < 330 && performance.now() >= e.proximoDisparo) {
-      dispararEnemigo(e);
-      e.proximoDisparo = performance.now() + 1450 + Math.random() * 650;
+    const distNave = Math.hypot(nave.x - e.x, nave.y - e.y);
+    
+    // Persecución inteligente fuera de zona segura
+    if (distNave < 900 && distBase > baseEspacial.radio) {
+      e.x += Math.cos(hacia) * e.velocidad;
+      e.y += Math.sin(hacia) * e.velocidad;
+      if (distNave < 380 && performance.now() >= e.proximoDisparo) {
+        dispararEnemigo(e);
+        e.proximoDisparo = performance.now() + 1300 + Math.random() * 700;
+      }
     }
 
+    // Colisión de disparos sobre el enemigo
     disparos.forEach(d => {
-      if (d.gastado || (d.objetivo && d.objetivo !== e)) return;
-      if (Math.hypot(d.x - e.x, d.y - e.y) < e.radio + 4) {
-        d.gastado = true; aplicarDano(e, 6); explosion(d.x, d.y, "#00eaff");
+      if (d.gastado) return;
+      if (Math.hypot(d.x - e.x, d.y - e.y) < e.radio + 6) {
+        d.gastado = true;
+        aplicarDano(e, 8);
+        explosion(d.x, d.y, "#00eaff");
         if (e.vida <= 0 && !e.destruido) {
-          e.destruido = true; destruidos++; explosion(e.x, e.y, "#ff2b91");
-          if (nave.seleccionado === e) { nave.seleccionado = null; nave.atacando = false; objetivoUI.textContent = "Objetivo: Destruido"; estado.textContent = "Estado: Objetivo destruido"; }
+          e.destruido = true; destruidos++;
+          explosion(e.x, e.y, "#ff2b91");
+          
+          // Generar Carga Recompensas / Minerales (Cargo Box)
+          cajasCarga.push({
+            x: e.x, y: e.y, creditos: 150 + Math.floor(Math.random() * 200),
+            mineral: 10 + Math.floor(Math.random() * 15), vida: 600
+          });
+
+          if (nave.seleccionado === e) {
+            nave.seleccionado = null; nave.atacando = false;
+            objetivoUI.textContent = "Objetivo: Destruido";
+          }
         }
       }
     });
   });
 
+  // Recolección de Cajas de Carga
+  cajasCarga.forEach(c => {
+    c.vida--;
+    if (Math.hypot(nave.x - c.x, nave.y - c.y) < 40) {
+      creditos += c.creditos; mineral += c.mineral;
+      c.recolectado = true;
+      particulas.push({x: c.x, y: c.y, vx: 0, vy: -1, vida: 25, color: "#ffd700", tipo: "flash", radio: 8});
+    }
+  });
+  cajasCarga = cajasCarga.filter(c => c.vida > 0 && !c.recolectado);
+
   enemigos = enemigos.filter(e => !e.destruido);
   disparos = disparos.filter(d => !d.gastado);
-  if (enemigos.length < 6) crearEnemigo();
+  if (enemigos.length < 22) crearEnemigo();
 
   particulas.forEach(p => { p.x += p.vx; p.y += p.vy; p.vida--; });
   particulas = particulas.filter(p => p.vida > 0);
 
-  estadisticas.textContent = `Objetivos: ${enemigos.length} | Destruidos: ${destruidos}`;
-  actualizarBarrasNave();
+  estadisticas.textContent = `Objetivos en sector: ${enemigos.length} | Destruidos: ${destruidos}`;
+  actualizarBarras();
 }
 
-function dibujarNave() {
+function dibujarBaseEspacial(){
+  const relX = baseEspacial.x - CAMARA.x;
+  const relY = baseEspacial.y - CAMARA.y;
+  
   ctx.save();
-  ctx.translate(nave.x, nave.y);
+  ctx.translate(relX, relY);
+  
+  // Campo de fuerza / Zona Segura
+  ctx.strokeStyle = "rgba(0, 234, 255, 0.4)";
+  ctx.fillStyle = "rgba(0, 100, 200, 0.08)";
+  ctx.lineWidth = 2;
+  ctx.shadowColor = "#00eaff";
+  ctx.shadowBlur = 15;
+  ctx.beginPath();
+  ctx.arc(0, 0, baseEspacial.radio, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Núcleo de la Estación
+  ctx.fillStyle = "#0c2338";
+  ctx.strokeStyle = "#00eaff";
+  ctx.beginPath();
+  ctx.arc(0, 0, 45, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "11px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("ESTACIÓN CENTRAL", 0, -55);
+  ctx.fillText("ZONA SEGURA (R)", 0, 68);
+  ctx.restore();
+}
+
+function dibujarMinimapa(){
+  const tamano = 140;
+  const x = ancho - tamano - 15;
+  const y = alto - tamano - 15;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(2, 10, 25, 0.85)";
+  ctx.strokeStyle = "#00eaff";
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(x, y, tamano, tamano);
+  ctx.strokeRect(x, y, tamano, tamano);
+
+  // Posición relativa de la Base
+  const bx = x + (baseEspacial.x / MAPA_ANCHO) * tamano;
+  const by = y + (baseEspacial.y / MAPA_ALTO) * tamano;
+  ctx.strokeStyle = "rgba(0, 234, 255, 0.6)";
+  ctx.beginPath(); ctx.arc(bx, by, (baseEspacial.radio / MAPA_ANCHO) * tamano, 0, Math.PI * 2); ctx.stroke();
+
+  // Posición de la Nave
+  const nx = x + (nave.x / MAPA_ANCHO) * tamano;
+  const ny = y + (nave.y / MAPA_ALTO) * tamano;
+  ctx.fillStyle = "#00eaff";
+  ctx.beginPath(); ctx.arc(nx, ny, 3, 0, Math.PI * 2); ctx.fill();
+
+  // Posición de Enemigos
+  enemigos.forEach(e => {
+    const ex = x + (e.x / MAPA_ANCHO) * tamano;
+    const ey = y + (e.y / MAPA_ALTO) * tamano;
+    ctx.fillStyle = (nave.seleccionado === e) ? "#ff2b91" : "#ff6b32";
+    ctx.beginPath(); ctx.arc(ex, ey, 2, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // Visor de la cámara activa en el minimapa
+  const camW = (ancho / MAPA_ANCHO) * tamano;
+  const camH = (alto / MAPA_ALTO) * tamano;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+  ctx.strokeRect(x + (CAMARA.x / MAPA_ANCHO) * tamano, y + (CAMARA.y / MAPA_ALTO) * tamano, camW, camH);
+
+  ctx.restore();
+}
+
+function dibujarNave(){
+  const relX = nave.x - CAMARA.x;
+  const relY = nave.y - CAMARA.y;
+
+  ctx.save();
+  ctx.translate(relX, relY);
   const orientacionOriginal = 2.35;
   ctx.rotate(nave.angulo - orientacionOriginal);
+
   const intensidad = Math.max(0, Math.min(1, nave.velocidad / nave.velocidadMaxima));
   if (imagenGrupTo.complete && imagenGrupTo.naturalWidth > 0) {
     const anchoNave = 142 + intensidad * 5;
@@ -549,189 +603,129 @@ function dibujarNave() {
     ctx.shadowColor = "#00eaff";
     ctx.shadowBlur = 13 + intensidad * 12;
     ctx.drawImage(imagenGrupTo, -anchoNave / 2, -altoNave / 2, anchoNave, altoNave);
-  } else {
-    ctx.shadowBlur = 15; ctx.shadowColor = "#00ffc8"; ctx.fillStyle = "#00ffc8";
-    ctx.beginPath(); ctx.moveTo(-17, -8); ctx.lineTo(-34 - intensidad * 12, 0); ctx.lineTo(-17, 8); ctx.fill();
-    ctx.shadowColor = "#00eaff"; ctx.shadowBlur = 20; ctx.fillStyle = "#9baebc"; ctx.strokeStyle = "#00eaff"; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(27, 0); ctx.lineTo(8, -11); ctx.lineTo(-13, -9); ctx.lineTo(-22, 0); ctx.lineTo(-13, 9); ctx.lineTo(8, 11); ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#ff2b91"; ctx.shadowColor = "#ff2b91"; ctx.beginPath(); ctx.arc(12, 0, 4, 0, Math.PI * 2); ctx.fill();
-  }
-  if (performance.now() - ultimoImpactoNave < 170) {
-    ctx.strokeStyle = "#ff8844"; ctx.lineWidth = 3; ctx.shadowColor = "#ff8844"; ctx.shadowBlur = 20;
-    ctx.beginPath(); ctx.arc(0, 0, 57, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
 }
 
-function dibujarEnemigo(e) {
-  const pulso = 1 + Math.sin(e.fase * 2.2 + e.pulso) * 0.035;
+function dibujarEnemigo(e){
+  const relX = e.x - CAMARA.x;
+  const relY = e.y - CAMARA.y;
+
+  // Renderizar solo si está dentro de la vista de la pantalla
+  if (relX < -100 || relX > ancho + 100 || relY < -100 || relY > alto + 100) return;
+
+  const pulso = 1 + Math.sin(e.fase * 2.2 + e.pulso) * .035;
   const angulo = Math.atan2(nave.y - e.y, nave.x - e.x);
+
   ctx.save();
-  ctx.translate(e.x, e.y);
+  ctx.translate(relX, relY);
   ctx.rotate(angulo);
   ctx.scale(pulso, 1 / pulso);
 
-  const tam = e.esGrupToPrueba ? 66 : 54;
+  const tam = 54;
   if (imagenEnemigo.complete && imagenEnemigo.naturalWidth > 0) {
     ctx.shadowColor = "#ff6b32";
-    ctx.shadowBlur = 14 + Math.sin(e.fase * 3) * 4;
+    ctx.shadowBlur = 14;
     ctx.drawImage(imagenEnemigo, -tam / 2, -tam / 2, tam, tam);
-  } else {
-    ctx.fillStyle = "#542b13";
-    ctx.strokeStyle = "#ff8a32";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(tam / 2, 0); ctx.lineTo(8, -tam * 0.28);
-    ctx.lineTo(-tam * 0.38, -tam * 0.22); ctx.lineTo(-tam * 0.42, tam * 0.22);
-    ctx.lineTo(8, tam * 0.28); ctx.closePath();
-    ctx.fill(); ctx.stroke();
   }
 
   ctx.rotate(-angulo);
   ctx.scale(1 / pulso, pulso);
   ctx.shadowBlur = 0;
-  const anchoBarra = e.esGrupToPrueba ? 62 : 52;
-  ctx.fillStyle = "#152536";
-  ctx.fillRect(-anchoBarra / 2, -tam / 2 - 12, anchoBarra, 5);
-  ctx.fillStyle = "#00cfff";
-  ctx.fillRect(-anchoBarra / 2, -tam / 2 - 12, anchoBarra * Math.max(0, e.escudo / e.escudoMaximo), 5);
-  ctx.fillStyle = "#211522";
-  ctx.fillRect(-anchoBarra / 2, -tam / 2 - 5, anchoBarra, 5);
-  ctx.fillStyle = "#42f58b";
-  ctx.fillRect(-anchoBarra / 2, -tam / 2 - 5, anchoBarra * Math.max(0, e.vida / e.vidaMaxima), 5);
+
+  // Barras de Salud y Escudo
+  const anchoBarra = 52;
+  ctx.fillStyle = "#152536"; ctx.fillRect(-anchoBarra / 2, -tam / 2 - 12, anchoBarra, 4);
+  ctx.fillStyle = "#00cfff"; ctx.fillRect(-anchoBarra / 2, -tam / 2 - 12, anchoBarra * Math.max(0, e.escudo / e.escudoMaximo), 4);
+  ctx.fillStyle = "#211522"; ctx.fillRect(-anchoBarra / 2, -tam / 2 - 6, anchoBarra, 4);
+  ctx.fillStyle = "#42f58b"; ctx.fillRect(-anchoBarra / 2, -tam / 2 - 6, anchoBarra * Math.max(0, e.vida / e.vidaMaxima), 4);
 
   if (nave.seleccionado === e) {
     ctx.strokeStyle = nave.atacando ? "#ff2b91" : "#00eaff";
-    ctx.lineWidth = 2;
-    ctx.shadowColor = ctx.strokeStyle;
-    ctx.shadowBlur = 13;
-    ctx.beginPath();
-    ctx.arc(0, 0, tam * 0.62, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.lineWidth = 2; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 13;
+    ctx.beginPath(); ctx.arc(0, 0, tam * .62, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
 }
 
-function dibujarMinimapa() {
-  const tamano = 130;
-  const margin = 15;
-  const x = ancho - tamano - margin;
-  const y = alto - tamano - margin;
-
-  ctx.save();
-  ctx.fillStyle = "rgba(2, 10, 25, 0.85)";
-  ctx.strokeStyle = "#00eaff";
-  ctx.lineWidth = 1.5;
-  ctx.shadowColor = "rgba(0,234,255,0.4)";
-  ctx.shadowBlur = 8;
-  ctx.fillRect(x, y, tamano, tamano);
-  ctx.strokeRect(x, y, tamano, tamano);
-
-  // Rejilla de fondo del minimapa
-  ctx.strokeStyle = "rgba(0, 234, 255, 0.15)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x + tamano / 2, y); ctx.lineTo(x + tamano / 2, y + tamano);
-  ctx.moveTo(x, y + tamano / 2); ctx.lineTo(x + tamano, y + tamano / 2);
-  ctx.stroke();
-
-  // Detección de la nave de GRUPTO en radar
-  const nx = x + (nave.x / ancho) * tamano;
-  const ny = y + (nave.y / alto) * tamano;
-  ctx.fillStyle = "#00eaff";
-  ctx.shadowColor = "#00eaff";
-  ctx.shadowBlur = 6;
-  ctx.beginPath();
-  ctx.arc(nx, ny, 3.5, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Enemigos en radar
-  enemigos.forEach(e => {
-    const ex = x + (e.x / ancho) * tamano;
-    const ey = y + (e.y / alto) * tamano;
-    const esSeleccionado = (nave.seleccionado === e);
-    ctx.fillStyle = esSeleccionado ? "#ff2b91" : "#ff6b32";
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = esSeleccionado ? 8 : 4;
-    ctx.beginPath();
-    ctx.arc(ex, ey, esSeleccionado ? 3.5 : 2.5, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  ctx.restore();
-}
-
-function dibujar() {
+function dibujar(){
   ctx.clearRect(0, 0, ancho, alto);
-  ctx.fillStyle = "#030611";
-  ctx.fillRect(0, 0, ancho, alto);
+  ctx.fillStyle = "#030611"; ctx.fillRect(0, 0, ancho, alto);
 
-  estrellas.forEach(e => { ctx.fillStyle = "rgba(180,230,255,.65)"; ctx.fillRect(e.x, e.y, e.r, e.r); });
+  // Nebulosas de Fondo
+  nebulosas.forEach(n => {
+    const rx = n.x - CAMARA.x * 0.2;
+    const ry = n.y - CAMARA.y * 0.2;
+    const g = ctx.createRadialGradient(rx, ry, 10, rx, ry, n.r);
+    g.addColorStop(0, n.color); g.addColorStop(1, "transparent");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(rx, ry, n.r, 0, Math.PI * 2); ctx.fill();
+  });
 
+  // Fondo Parallax de Estrellas
+  estrellas.forEach(e => {
+    const rx = (e.x - CAMARA.x * e.profundidad + MAPA_ANCHO) % MAPA_ANCHO;
+    const ry = (e.y - CAMARA.y * e.profundidad + MAPA_ALTO) % MAPA_ALTO;
+    ctx.fillStyle = "rgba(180,230,255,.65)";
+    ctx.fillRect(rx, ry, e.r, e.r);
+  });
+
+  dibujarBaseEspacial();
+
+  // Destino de Movimiento
   if (nave.destinoX !== null) {
+    const rx = nave.destinoX - CAMARA.x, ry = nave.destinoY - CAMARA.y;
     ctx.save(); ctx.strokeStyle = "#00eaff"; ctx.shadowBlur = 12; ctx.shadowColor = "#00eaff";
-    ctx.beginPath(); ctx.arc(nave.destinoX, nave.destinoY, 9, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(nave.destinoX - 14, nave.destinoY); ctx.lineTo(nave.destinoX + 14, nave.destinoY);
-    ctx.moveTo(nave.destinoX, nave.destinoY - 14); ctx.lineTo(nave.destinoX, nave.destinoY + 14); ctx.stroke();
+    ctx.beginPath(); ctx.arc(rx, ry, 9, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rx - 12, ry); ctx.lineTo(rx + 12, ry); ctx.moveTo(rx, ry - 12); ctx.lineTo(rx, ry + 12); ctx.stroke();
     ctx.restore();
   }
 
-  disparosEnemigos.forEach(d => {
-    ctx.save();
-    ctx.shadowColor = d.acierta ? "#ff7438" : "#8b5360"; ctx.shadowBlur = d.acierta ? 19 : 10;
-    ctx.strokeStyle = d.acierta ? "rgba(255,75,45,.45)" : "rgba(170,95,110,.25)"; ctx.lineWidth = 7;
-    ctx.beginPath(); ctx.moveTo(d.x - d.vx * 2.2, d.y - d.vy * 2.2); ctx.lineTo(d.x, d.y); ctx.stroke();
-    ctx.strokeStyle = d.acierta ? "#ff7138" : "#a66b79"; ctx.lineWidth = 2.8;
-    ctx.beginPath(); ctx.moveTo(d.x - d.vx * 2.2, d.y - d.vy * 2.2); ctx.lineTo(d.x, d.y); ctx.stroke();
-    ctx.fillStyle = "#fff0bd"; ctx.beginPath(); ctx.arc(d.x, d.y, 2.2, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+  // Cajas de Carga
+  cajasCarga.forEach(c => {
+    const rx = c.x - CAMARA.x, ry = c.y - CAMARA.y;
+    ctx.save(); ctx.fillStyle = "#ffd700"; ctx.shadowColor = "#ffd700"; ctx.shadowBlur = 10;
+    ctx.fillRect(rx - 6, ry - 6, 12, 12); ctx.restore();
   });
 
-  disparos.forEach(d => {
-    ctx.save(); ctx.shadowBlur = 22; ctx.shadowColor = "#00eaff";
-    ctx.strokeStyle = "rgba(0,234,255,.35)"; ctx.lineWidth = 9;
-    ctx.beginPath(); ctx.moveTo(d.x - d.vx * 1.9, d.y - d.vy * 1.9); ctx.lineTo(d.x, d.y); ctx.stroke();
-    ctx.strokeStyle = "#00eaff"; ctx.lineWidth = 3.5;
-    ctx.beginPath(); ctx.moveTo(d.x - d.vx * 1.9, d.y - d.vy * 1.9); ctx.lineTo(d.x, d.y); ctx.stroke();
-    ctx.fillStyle = "#eaffff"; ctx.shadowBlur = 16; ctx.beginPath(); ctx.arc(d.x, d.y, 2.2, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  });
-
-  // Renderizar Misiles Guiados
+  // Misiles Guiados
   misiles.forEach(m => {
-    ctx.save();
-    const ang = Math.atan2(m.vy, m.vx);
-    ctx.translate(m.x, m.y);
-    ctx.rotate(ang);
-    ctx.shadowColor = "#ff9d00";
-    ctx.shadowBlur = 16;
-    ctx.fillStyle = "#ffea8c";
-    ctx.beginPath();
-    ctx.moveTo(10, 0); ctx.lineTo(-8, -5); ctx.lineTo(-4, 0); ctx.lineTo(-8, 5); ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#ff6a00";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    const rx = m.x - CAMARA.x, ry = m.y - CAMARA.y;
+    ctx.save(); ctx.fillStyle = "#ffaa00"; ctx.shadowColor = "#ffaa00"; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(rx, ry, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  });
+
+  // Disparos Enemigos
+  disparosEnemigos.forEach(d => {
+    const rx = d.x - CAMARA.x, ry = d.y - CAMARA.y;
+    ctx.save(); ctx.shadowColor = "#ff7438"; ctx.shadowBlur = 12;
+    ctx.strokeStyle = "#ff7138"; ctx.lineWidth = 2.8;
+    ctx.beginPath(); ctx.moveTo(rx - d.vx * 2, ry - d.vy * 2); ctx.lineTo(rx, ry); ctx.stroke();
+    ctx.restore();
+  });
+
+  // Disparos Jugador
+  disparos.forEach(d => {
+    const rx = d.x - CAMARA.x, ry = d.y - CAMARA.y;
+    ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = "#00eaff";
+    ctx.strokeStyle = "#00eaff"; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(rx - d.vx * 1.8, ry - d.vy * 1.8); ctx.lineTo(rx, ry); ctx.stroke();
     ctx.restore();
   });
 
   enemigos.forEach(dibujarEnemigo);
 
+  // Partículas
   particulas.forEach(p => {
+    const rx = p.x - CAMARA.x, ry = p.y - CAMARA.y;
     const progreso = 1 - p.vida / (p.vidaMax || 40);
     ctx.save(); ctx.globalAlpha = Math.max(0, p.vida / (p.vidaMax || 40));
-    ctx.shadowColor = p.color; ctx.shadowBlur = p.tipo === "flash" ? 28 : 13;
+    ctx.shadowColor = p.color; ctx.shadowBlur = 10;
     if (p.tipo === "anillo") {
-      ctx.strokeStyle = p.color; ctx.lineWidth = 2.5 * (1 - progreso) + 0.5;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.radio + progreso * 34, 0, Math.PI * 2); ctx.stroke();
-    } else if (p.tipo === "flash") {
-      const r = p.radio + progreso * 15;
-      const grad = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, r);
-      grad.addColorStop(0, "#ffffff"); grad.addColorStop(0.35, p.color); grad.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = p.color; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(rx, ry, p.radio + progreso * 30, 0, Math.PI * 2); ctx.stroke();
     } else {
-      ctx.strokeStyle = p.color; ctx.lineWidth = p.tipo === "fragmento" ? 2.8 : 1.8;
-      ctx.beginPath(); ctx.moveTo(p.x - p.vx * 1.8, p.y - p.vy * 1.8); ctx.lineTo(p.x, p.y); ctx.stroke();
+      ctx.strokeStyle = p.color; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(rx - p.vx * 1.5, ry - p.vy * 1.5); ctx.lineTo(rx, ry); ctx.stroke();
     }
     ctx.restore();
   });
@@ -740,11 +734,7 @@ function dibujar() {
   dibujarMinimapa();
 }
 
-function bucle() {
-  actualizar();
-  dibujar();
-  requestAnimationFrame(bucle);
-}
+function bucle(){ actualizar(); dibujar(); requestAnimationFrame(bucle); }
 bucle();
 </script>
 </body>
