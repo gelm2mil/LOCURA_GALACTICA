@@ -1,1 +1,381 @@
-prueba 
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#030611">
+    <title>LOCURA GALÁCTICA — Laboratorio de Combate</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #030611;
+            color: #00eaff;
+            font-family: Arial, sans-serif;
+        }
+
+        #juego {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        #interfaz {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 2;
+            padding: 12px 16px;
+            background: rgba(2, 10, 25, .85);
+            border: 1px solid #00eaff;
+            border-radius: 8px;
+            box-shadow: 0 0 15px #00eaff55;
+            pointer-events: none;
+        }
+
+        #interfaz strong {
+            color: #fff;
+            letter-spacing: 2px;
+        }
+
+        #instrucciones {
+            color: #b8dce9;
+            font-size: 12px;
+            margin-top: 7px;
+        }
+
+        #volver {
+            position: fixed;
+            right: 15px;
+            top: 15px;
+            z-index: 3;
+            padding: 10px 14px;
+            color: #00eaff;
+            background: #061426;
+            border: 1px solid #00eaff;
+            border-radius: 6px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="interfaz">
+        <strong>LOCURA GALÁCTICA</strong>
+        <div>GRUPTO — PROTOTIPO DE COMBATE</div>
+        <div id="estadisticas">Objetivos: 0 | Destruidos: 0</div>
+        <div id="instrucciones">
+            WASD o flechas: mover<br>
+            Mouse: apuntar<br>
+            Clic izquierdo: disparar
+        </div>
+    </div>
+
+    <a id="volver" href="index.html">SALIR</a>
+
+    <canvas id="juego"></canvas>
+
+    <script>
+    "use strict";
+
+    const canvas = document.getElementById("juego");
+    const ctx = canvas.getContext("2d");
+    const estadisticas = document.getElementById("estadisticas");
+
+    let ancho, alto;
+    let disparos = [];
+    let enemigos = [];
+    let particulas = [];
+    let estrellas = [];
+    let destruidos = 0;
+
+    const teclas = {};
+
+    const nave = {
+        x: 0,
+        y: 0,
+        angulo: 0,
+        velocidad: 4,
+        vida: 100
+    };
+
+    const mouse = { x: 0, y: 0 };
+
+    function ajustar() {
+        const escala = Math.min(window.devicePixelRatio || 1, 2);
+
+        ancho = window.innerWidth;
+        alto = window.innerHeight;
+
+        canvas.width = ancho * escala;
+        canvas.height = alto * escala;
+
+        ctx.setTransform(escala, 0, 0, escala, 0, 0);
+
+        if (!nave.x) {
+            nave.x = ancho / 2;
+            nave.y = alto / 2;
+        }
+
+        estrellas = Array.from({length: 130}, () => ({
+            x: Math.random() * ancho,
+            y: Math.random() * alto,
+            r: Math.random() * 1.4 + .3
+        }));
+    }
+
+    window.addEventListener("resize", ajustar);
+    ajustar();
+
+    function crearEnemigo() {
+        const lado = Math.floor(Math.random() * 4);
+        let x = 0, y = 0;
+
+        if (lado === 0) { x = Math.random()*ancho; y = -30; }
+        if (lado === 1) { x = ancho+30; y = Math.random()*alto; }
+        if (lado === 2) { x = Math.random()*ancho; y = alto+30; }
+        if (lado === 3) { x = -30; y = Math.random()*alto; }
+
+        enemigos.push({
+            x, y,
+            vida: 3,
+            radio: 17,
+            velocidad: 0.55 + Math.random() * 0.35
+        });
+    }
+
+    for (let i = 0; i < 6; i++) crearEnemigo();
+
+    window.addEventListener("keydown", e => {
+        teclas[e.key.toLowerCase()] = true;
+        if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) {
+            e.preventDefault();
+        }
+    });
+
+    window.addEventListener("keyup", e => {
+        teclas[e.key.toLowerCase()] = false;
+    });
+
+    canvas.addEventListener("mousemove", e => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+    });
+
+    canvas.addEventListener("mousedown", e => {
+        if (e.button !== 0) return;
+        disparar();
+    });
+
+    function disparar() {
+        const angulo = nave.angulo;
+        const distancia = 27;
+
+        disparos.push({
+            x: nave.x + Math.cos(angulo) * distancia,
+            y: nave.y + Math.sin(angulo) * distancia,
+            vx: Math.cos(angulo) * 12,
+            vy: Math.sin(angulo) * 12,
+            vida: 55
+        });
+    }
+
+    function explosion(x, y, color) {
+        for (let i = 0; i < 18; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const v = Math.random() * 4 + 1;
+
+            particulas.push({
+                x, y,
+                vx: Math.cos(a) * v,
+                vy: Math.sin(a) * v,
+                vida: 25,
+                color
+            });
+        }
+    }
+
+    function dibujarNave() {
+        ctx.save();
+        ctx.translate(nave.x, nave.y);
+        ctx.rotate(nave.angulo);
+
+        // Propulsores
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = "#00ffc8";
+        ctx.fillStyle = "#00ffc8";
+
+        ctx.beginPath();
+        ctx.moveTo(-17, -8);
+        ctx.lineTo(-34, 0);
+        ctx.lineTo(-17, 8);
+        ctx.fill();
+
+        // Cuerpo de GRUPTO
+        ctx.shadowColor = "#00eaff";
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = "#9baebc";
+        ctx.strokeStyle = "#00eaff";
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.moveTo(27, 0);
+        ctx.lineTo(8, -11);
+        ctx.lineTo(-13, -9);
+        ctx.lineTo(-22, 0);
+        ctx.lineTo(-13, 9);
+        ctx.lineTo(8, 11);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Núcleo frontal
+        ctx.fillStyle = "#ff2b91";
+        ctx.shadowColor = "#ff2b91";
+        ctx.beginPath();
+        ctx.arc(12, 0, 4, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    function dibujarEnemigo(e) {
+        ctx.save();
+        ctx.translate(e.x, e.y);
+
+        ctx.shadowBlur = 18;
+        ctx.shadowColor = "#ff2b91";
+        ctx.fillStyle = "#58113c";
+        ctx.strokeStyle = "#ff2b91";
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radio, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    function actualizar() {
+        if (teclas["w"] || teclas["arrowup"]) nave.y -= nave.velocidad;
+        if (teclas["s"] || teclas["arrowdown"]) nave.y += nave.velocidad;
+        if (teclas["a"] || teclas["arrowleft"]) nave.x -= nave.velocidad;
+        if (teclas["d"] || teclas["arrowright"]) nave.x += nave.velocidad;
+
+        nave.x = Math.max(25, Math.min(ancho-25, nave.x));
+        nave.y = Math.max(25, Math.min(alto-25, nave.y));
+
+        nave.angulo = Math.atan2(mouse.y - nave.y, mouse.x - nave.x);
+
+        disparos.forEach(d => {
+            d.x += d.vx;
+            d.y += d.vy;
+            d.vida--;
+        });
+
+        disparos = disparos.filter(d => d.vida > 0);
+
+        enemigos.forEach(e => {
+            const a = Math.atan2(nave.y-e.y, nave.x-e.x);
+            e.x += Math.cos(a) * e.velocidad;
+            e.y += Math.sin(a) * e.velocidad;
+
+            disparos.forEach(d => {
+                const distancia = Math.hypot(d.x-e.x, d.y-e.y);
+
+                if (distancia < e.radio+4 && !d.gastado) {
+                    d.gastado = true;
+                    e.vida--;
+                    explosion(d.x, d.y, "#00eaff");
+
+                    if (e.vida <= 0) {
+                        e.destruido = true;
+                        destruidos++;
+                        explosion(e.x, e.y, "#ff2b91");
+                    }
+                }
+            });
+        });
+
+        enemigos = enemigos.filter(e => !e.destruido);
+        disparos = disparos.filter(d => !d.gastado);
+
+        if (enemigos.length < 6) crearEnemigo();
+
+        particulas.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vida--;
+        });
+
+        particulas = particulas.filter(p => p.vida > 0);
+
+        estadisticas.textContent =
+            `Objetivos: ${enemigos.length} | Destruidos: ${destruidos}`;
+    }
+
+    function dibujar() {
+        ctx.clearRect(0, 0, ancho, alto);
+
+        ctx.fillStyle = "#030611";
+        ctx.fillRect(0, 0, ancho, alto);
+
+        estrellas.forEach(e => {
+            ctx.fillStyle = "rgba(180,230,255,.65)";
+            ctx.fillRect(e.x, e.y, e.r, e.r);
+        });
+
+        // Proyectiles láser
+        disparos.forEach(d => {
+            ctx.save();
+            ctx.shadowBlur = 18;
+            ctx.shadowColor = "#00eaff";
+            ctx.strokeStyle = "#00eaff";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(d.x-d.vx, d.y-d.vy);
+            ctx.lineTo(d.x, d.y);
+            ctx.stroke();
+            ctx.restore();
+        });
+
+        enemigos.forEach(dibujarEnemigo);
+
+        particulas.forEach(p => {
+            ctx.globalAlpha = Math.max(0, p.vida/25);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, 3, 3);
+            ctx.globalAlpha = 1;
+        });
+
+        dibujarNave();
+    }
+
+    function bucle() {
+        actualizar();
+        dibujar();
+        requestAnimationFrame(bucle);
+    }
+
+    bucle();
+
+    </script>
+
+</body>
+</html>
