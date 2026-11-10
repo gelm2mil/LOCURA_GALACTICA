@@ -34,7 +34,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#030611;col
     Clic: seleccionar enemigo<br>
     Doble clic: activar ataque<br>
     Mouse presionado: maniobrar<br>
-    CTRL: disparo (pendiente de integrar)<br>
+    CTRL: activar disparo<br>
     ESPACIO: misil (pendiente de integrar)
   </div>
 </div>
@@ -78,7 +78,8 @@ function actualizarBarrasNave(){
  escudoNaveTexto.textContent=Math.ceil(nave.escudo)+" / "+nave.escudoMaximo;
  vidaNaveTexto.textContent=Math.ceil(nave.vida)+" / "+nave.vidaMaxima;
 }
-\nfunction crearEnemigo(){
+
+function crearEnemigo(){
  const lado=Math.floor(Math.random()*4);let x=0,y=0;
  if(lado===0){x=Math.random()*ancho;y=-30;}
  if(lado===1){x=ancho+30;y=Math.random()*alto;}
@@ -103,10 +104,9 @@ window.addEventListener("keydown",e=>{
  teclas[k]=true;
  if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();
 
- // ENTER o ENTER del teclado numerico: atacar al objetivo seleccionado.
- if((e.key==="Enter" || e.code==="NumpadEnter") && !e.repeat){
+ // CTRL: iniciar ataque contra el objetivo seleccionado.
+ if(e.key==="Control" && !e.repeat){
   e.preventDefault();
-  e.stopPropagation();
   iniciarAtaque();
  }
  if(e.code==="Space"&&!e.repeat)disparar(false);
@@ -115,9 +115,9 @@ window.addEventListener("keyup",e=>{
  teclas[e.key.toLowerCase()]=false;
 });
 
-// Respaldo global: ENTER inicia el ataque aunque el canvas no tenga el foco.
+// CTRL funciona aunque el foco del teclado no esté directamente sobre el canvas.
 document.addEventListener("keydown",e=>{
- if((e.key==="Enter"||e.code==="NumpadEnter")&&!e.repeat){
+ if(e.key==="Control"&&!e.repeat){
   e.preventDefault();
   iniciarAtaque();
  }
