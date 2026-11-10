@@ -61,7 +61,7 @@ const escudoNaveBarra=document.getElementById("escudoNaveBarra");
 const vidaNaveBarra=document.getElementById("vidaNaveBarra");
 const escudoNaveTexto=document.getElementById("escudoNaveTexto");
 const vidaNaveTexto=document.getElementById("vidaNaveTexto");
-let ancho,alto,disparos=[],enemigos=[],particulas=[],estrellas=[],destruidos=0,ultimoDisparo=0;
+let ancho,alto,disparos=[],disparosEnemigos=[],enemigos=[],particulas=[],estrellas=[],destruidos=0,ultimoDisparo=0,ultimoImpactoNave=0;
 const teclas={};
 const nave={x:0,y:0,angulo:0,velocidad:0,velocidadMaxima:4.2,aceleracion:.13,frenado:.94,destinoX:null,destinoY:null,seleccionado:null,atacando:false,ordenManual:false,escudo:100,escudoMaximo:100,vida:100,vidaMaxima:100};
 const mouse={x:0,y:0,izquierdo:false};
@@ -95,7 +95,7 @@ function crearEnemigo(){
  if(lado===1){x=ancho+30;y=Math.random()*alto;}
  if(lado===2){x=Math.random()*ancho;y=alto+30;}
  if(lado===3){x=-30;y=Math.random()*alto;}
- enemigos.push({x,y,escudo:70,escudoMaximo:70,vida:50,vidaMaxima:50,radio:17+Math.random()*4,velocidad:.45+Math.random()*.3,destruido:false,fase:Math.random()*Math.PI*2, giro:Math.random()<.5?-1:1, tipo:3, pulso:Math.random()*Math.PI*2});
+ enemigos.push({x,y,escudo:70,escudoMaximo:70,vida:50,vidaMaxima:50,radio:17+Math.random()*4,velocidad:.45+Math.random()*.3,destruido:false,fase:Math.random()*Math.PI*2, giro:Math.random()<.5?-1:1, tipo:3, pulso:Math.random()*Math.PI*2,proximoDisparo:performance.now()+900+Math.random()*1300});
 }
 for(let i=0;i<6;i++)crearEnemigo();
 
@@ -106,7 +106,7 @@ function crearGrupToPrueba(){
   escudo:180,escudoMaximo:180,vida:180,vidaMaxima:180,
   radio:24,velocidad:.28,destruido:false,
   fase:Math.random()*Math.PI*2,giro:1,tipo:3,
-  pulso:Math.random()*Math.PI*2,esGrupToPrueba:true
+  pulso:Math.random()*Math.PI*2,proximoDisparo:performance.now()+900+Math.random()*1300,esGrupToPrueba:true
  });
 }
 crearGrupToPrueba();
@@ -218,6 +218,15 @@ function explosion(x,y,color){
    radio:Math.random()*2.8+1});
  }
 }
+function dispararEnemigo(e){
+ const angulo=Math.atan2(nave.y-e.y,nave.x-e.x);
+ const velocidad=4.1+Math.random()*.7;
+ disparosEnemigos.push({
+  x:e.x+Math.cos(angulo)*22,y:e.y+Math.sin(angulo)*22,
+  vx:Math.cos(angulo)*velocidad,vy:Math.sin(angulo)*velocidad,
+  vida:115,danio:5.5
+ });
+}
 function girarHacia(destino){
  let d=destino-nave.angulo;while(d>Math.PI)d-=Math.PI*2;while(d< -Math.PI)d+=Math.PI*2;
  nave.angulo+=Math.max(-.09,Math.min(.09,d));
@@ -267,6 +276,19 @@ function actualizarMovimiento(){
 function actualizar(){
  actualizarMovimiento();
  disparos.forEach(d=>{d.x+=d.vx;d.y+=d.vy;d.vida--;});disparos=disparos.filter(d=>d.vida>0);
+ disparosEnemigos.forEach(d=>{
+  d.x+=d.vx;d.y+=d.vy;d.vida--;
+  if(!d.impactado&&Math.hypot(d.x-nave.x,d.y-nave.y)<31){
+   d.impactado=true;d.vida=0;
+   // El impacto enemigo castiga principalmente el escudo y menos la vida.
+   const danoEscudo=d.danio*.8,danoVida=d.danio*.2;
+   nave.escudo=Math.max(0,nave.escudo-danoEscudo);
+   nave.vida=Math.max(0,nave.vida-danoVida);
+   explosion(nave.x,nave.y,"#ff9b45");
+   ultimoImpactoNave=performance.now();
+  }
+ });
+ disparosEnemigos=disparosEnemigos.filter(d=>d.vida>0&&!d.impactado);
  enemigos.forEach(e=>{
   e.fase+=.035+e.velocidad*.012;
   const hacia=Math.atan2(nave.y-e.y,nave.x-e.x);
@@ -277,6 +299,11 @@ function actualizar(){
   e.x+=Math.cos(hacia)*avance+Math.cos(hacia+Math.PI/2)*(lateral+orbita);
   e.y+=Math.sin(hacia)*avance+Math.sin(hacia+Math.PI/2)*(lateral+orbita);
   if(distancia<115){e.x-=Math.cos(hacia)*e.velocidad*.55;e.y-=Math.sin(hacia)*e.velocidad*.55;}
+  // Los ANNIHILATOR atacan a GRUPTO cuando entran en alcance.
+  if(distancia<520&&performance.now()>=e.proximoDisparo){
+   dispararEnemigo(e);
+   e.proximoDisparo=performance.now()+1650+Math.random()*900;
+  }
   disparos.forEach(d=>{
    if(d.gastado||(d.objetivo&&d.objetivo!==e))return;
    if(Math.hypot(d.x-e.x,d.y-e.y)<e.radio+4){
@@ -313,6 +340,10 @@ function dibujarNave(){
   ctx.shadowColor="#00eaff";ctx.shadowBlur=20;ctx.fillStyle="#9baebc";ctx.strokeStyle="#00eaff";ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(27,0);ctx.lineTo(8,-11);ctx.lineTo(-13,-9);ctx.lineTo(-22,0);ctx.lineTo(-13,9);ctx.lineTo(8,11);ctx.closePath();ctx.fill();ctx.stroke();
   ctx.fillStyle="#ff2b91";ctx.shadowColor="#ff2b91";ctx.beginPath();ctx.arc(12,0,4,0,Math.PI*2);ctx.fill();
+ }
+ if(performance.now()-ultimoImpactoNave<170){
+  ctx.strokeStyle="#ff8844";ctx.lineWidth=3;ctx.shadowColor="#ff8844";ctx.shadowBlur=20;
+  ctx.beginPath();ctx.arc(0,0,57,0,Math.PI*2);ctx.stroke();
  }
  ctx.restore();
 }
@@ -371,6 +402,16 @@ function dibujar(){
  ctx.clearRect(0,0,ancho,alto);ctx.fillStyle="#030611";ctx.fillRect(0,0,ancho,alto);
  estrellas.forEach(e=>{ctx.fillStyle="rgba(180,230,255,.65)";ctx.fillRect(e.x,e.y,e.r,e.r);});
  if(nave.destinoX!==null){ctx.save();ctx.strokeStyle="#00eaff";ctx.shadowBlur=12;ctx.shadowColor="#00eaff";ctx.beginPath();ctx.arc(nave.destinoX,nave.destinoY,9,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(nave.destinoX-14,nave.destinoY);ctx.lineTo(nave.destinoX+14,nave.destinoY);ctx.moveTo(nave.destinoX,nave.destinoY-14);ctx.lineTo(nave.destinoX,nave.destinoY+14);ctx.stroke();ctx.restore();}
+ disparosEnemigos.forEach(d=>{
+  ctx.save();
+  ctx.shadowColor="#ff7438";ctx.shadowBlur=18;
+  ctx.strokeStyle="rgba(255,75,45,.35)";ctx.lineWidth=8;
+  ctx.beginPath();ctx.moveTo(d.x-d.vx*2,d.y-d.vy*2);ctx.lineTo(d.x,d.y);ctx.stroke();
+  ctx.strokeStyle="#ff7138";ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(d.x-d.vx*2,d.y-d.vy*2);ctx.lineTo(d.x,d.y);ctx.stroke();
+  ctx.fillStyle="#fff0bd";ctx.beginPath();ctx.arc(d.x,d.y,2,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+ });
  disparos.forEach(d=>{
   ctx.save();ctx.shadowBlur=22;ctx.shadowColor="#00eaff";
   ctx.strokeStyle="rgba(0,234,255,.35)";ctx.lineWidth=9;
