@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#030611">
-<title>LOCURA GALÁCTICA — IA y Orientación Corregida</title>
+<title>LOCURA GALÁCTICA — Sistema MMO Espacial</title>
 <style>
 *{box-sizing:border-box}
 html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#030611;color:#00eaff;font-family:Arial,sans-serif}
@@ -35,7 +35,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#030611;col
   <div class="barra"><span>VIDA GRUPTO</span><div class="pista"><i id="vidaNaveBarra"></i></div><b id="vidaNaveTexto">100 / 100</b></div>
   <div class="barra"><span>RECARGA MISIL</span><div class="pista"><i id="misilNaveBarra"></i></div><b id="misilNaveTexto">LISTO</b></div>
   <div id="instrucciones">
-    Clic: seleccionar enemigo<br>
+    Clic: seleccionar enemigo (fácil)<br>
     Doble clic: activar ataque continuo<br>
     Mouse presionado: maniobrar libremente<br>
     CTRL: activar/desactivar ataque<br>
@@ -70,9 +70,9 @@ const MAPA_ANCHO = 5000;
 const MAPA_ALTO = 5000;
 const CAMARA = { x: 0, y: 0 };
 
-// Desfase de orientación original de las imágenes (en radianes)
 const ORIENTACION_GRUPTO = 2.35;
-const ORIENTACION_ANNIHILATOR = Math.PI; // Ajuste de 180° para alinear el morro frontal
+// Corrección geométrica exacta de la orientación del sprite enemigo
+const ORIENTACION_ANNIHILATOR = -Math.PI / 2; 
 
 let ancho, alto, escala = 1;
 let disparos = [], disparosEnemigos = [], enemigos = [], particulas = [], misiles = [], cajasCarga = [], estrellas = [], nebulosas = [];
@@ -153,15 +153,15 @@ function actualizarBarras(){
 
 function crearEnemigo(){
   const a = Math.random() * Math.PI * 2;
-  const dist = 600 + Math.random() * 1800;
+  const dist = 700 + Math.random() * 1800;
   const x = Math.max(100, Math.min(MAPA_ANCHO - 100, nave.x + Math.cos(a) * dist));
   const y = Math.max(100, Math.min(MAPA_ALTO - 100, nave.y + Math.sin(a) * dist));
   
   enemigos.push({
     x, y, angulo: Math.random() * Math.PI * 2, escudo: 80, escudoMaximo: 80, vida: 60, vidaMaxima: 60,
-    radio: 26, velocidad: 2.1 + Math.random() * .5, destruido: false,
+    radio: 26, velocidad: 1.6 + Math.random() * .4, destruido: false,
     fase: Math.random() * Math.PI * 2, pulso: Math.random() * Math.PI * 2,
-    proximoDisparo: performance.now() + 800 + Math.random() * 1200
+    proximoDisparo: performance.now() + 1000 + Math.random() * 1500
   });
 }
 for (let i = 0; i < 22; i++) crearEnemigo();
@@ -283,7 +283,7 @@ function disparar(automatico = false){
   const a = objetivo ? Math.atan2(objetivo.y - nave.y, objetivo.x - nave.x) : nave.anguloVisual;
   disparos.push({
     x: nave.x + Math.cos(a) * 27, y: nave.y + Math.sin(a) * 27,
-    vx: Math.cos(a) * 15, vy: Math.sin(a) * 15,
+    vx: Math.cos(a) * 16, vy: Math.sin(a) * 16,
     vida: 65, gastado: false, objetivo
   });
 }
@@ -302,10 +302,9 @@ function explosion(x, y, color){
   }
 }
 
-// DISPARO ENEMIGO CORREGIDO: Nace exactamente desde el morro frontal alineado
 function dispararEnemigo(e){
   const a = e.angulo;
-  const velocidad = 7.0;
+  const velocidad = 7.5;
   disparosEnemigos.push({
     x: e.x + Math.cos(a) * 28, y: e.y + Math.sin(a) * 28,
     vx: Math.cos(a) * velocidad, vy: Math.sin(a) * velocidad,
@@ -410,13 +409,14 @@ function actualizar(){
   });
   misiles = misiles.filter(m => m.vida > 0);
 
+  // Sistema de impacto exclusivo al objetivo seleccionado
   disparos.forEach(d => {
     d.x += d.vx; d.y += d.vy; d.vida--;
     const objetivoValido = (d.objetivo && enemigos.includes(d.objetivo)) ? d.objetivo : null;
     if (objetivoValido) {
-      if (Math.hypot(d.x - objetivoValido.x, d.y - objetivoValido.y) < objetivoValido.radio + 10) {
+      if (Math.hypot(d.x - objetivoValido.x, d.y - objetivoValido.y) < objetivoValido.radio + 12) {
         d.gastado = true;
-        aplicarDano(objetivoValido, 9);
+        aplicarDano(objetivoValido, 10);
         explosion(d.x, d.y, "#00eaff");
         if (objetivoValido.vida <= 0 && !objetivoValido.destruido) {
           objetivoValido.destruido = true; destruidos++;
@@ -441,36 +441,40 @@ function actualizar(){
   });
   disparosEnemigos = disparosEnemigos.filter(d => d.vida > 0 && !d.impactado);
 
-  // IA ENEMIGA REVISADA: Giro suave y persecución frontal
+  // IA ESTRICTA ESTILO MMO ESPACIAL (Persecución directa y giro suave sin tirones)
   enemigos.forEach(e => {
     e.fase += .035;
     const haciaNave = Math.atan2(nave.y - e.y, nave.x - e.x);
     const distNave = Math.hypot(nave.x - e.x, nave.y - e.y);
     
-    if (distNave < 1200 && distBase > baseEspacial.radio) {
-      // Girar suavemente hacia la nave
-      e.angulo = rotarSuave(e.angulo, haciaNave, 0.09);
+    // Si la nave del jugador está dentro de la base segura, los NPCs pierden el interés y patrullan
+    const distBaseEnemigo = Math.hypot(e.x - baseEspacial.x, e.y - baseEspacial.y);
+    const jugadorEnBase = distBase <= baseEspacial.radio;
+
+    if (distNave < 1300 && !jugadorEnBase) {
+      // Rotación suave obligatoria hacia la nave
+      e.angulo = rotarSuave(e.angulo, haciaNave, 0.07);
       
-      // Avanzar en la dirección exacta de su morro
-      if (distNave > 180) {
+      // Movimiento frontal fluido hacia el jugador manteniendo distancia táctica
+      if (distNave > 160) {
         e.x += Math.cos(e.angulo) * e.velocidad;
         e.y += Math.sin(e.angulo) * e.velocidad;
       }
       
-      // Calcular alineación frontal real
       let difAngulo = Math.abs(e.angulo - haciaNave);
       while (difAngulo > Math.PI) difAngulo -= Math.PI * 2;
       difAngulo = Math.abs(difAngulo);
 
-      // Solo dispara si te está encarando de frente (< 25 grados) y está a tiro (< 500px)
-      if (distNave < 500 && difAngulo < 0.45 && performance.now() >= e.proximoDisparo) {
+      // Disparo frontal preciso cuando encaran al jugador
+      if (distNave < 550 && difAngulo < 0.5 && performance.now() >= e.proximoDisparo) {
         dispararEnemigo(e);
-        e.proximoDisparo = performance.now() + 1300 + Math.random() * 500;
+        e.proximoDisparo = performance.now() + 1200 + Math.random() * 500;
       }
     } else {
-      e.angulo += 0.01;
-      e.x += Math.cos(e.angulo) * (e.velocidad * 0.4);
-      e.y += Math.sin(e.angulo) * (e.velocidad * 0.4);
+      // Comportamiento de patrulla orbital pacífica si el jugador está a salvo o lejos
+      e.angulo += 0.008;
+      e.x += Math.cos(e.angulo) * (e.velocidad * 0.35);
+      e.y += Math.sin(e.angulo) * (e.velocidad * 0.35);
     }
   });
 
@@ -577,7 +581,7 @@ function dibujarEnemigo(e){
   ctx.save();
   ctx.translate(relX, relY);
   
-  // SE CORRIGE EL ÁNGULO VISUAL CON EL DESFASE DEL SPRITE ENEMY PNG (180 grados)
+  // ORIENTACIÓN MATEMÁTICA LIMPIA: El enemigo apunta de frente al jugador de forma fluida
   ctx.rotate(e.angulo - ORIENTACION_ANNIHILATOR);
   ctx.scale(pulso, 1 / pulso);
 
@@ -588,7 +592,6 @@ function dibujarEnemigo(e){
     ctx.drawImage(imagenEnemigo, -tam / 2, -tam / 2, tam, tam);
   }
 
-  // Restaurar rotación para la barra de vida e indicador táctico
   ctx.rotate(-(e.angulo - ORIENTACION_ANNIHILATOR));
   ctx.scale(1 / pulso, pulso);
   ctx.shadowBlur = 0;
