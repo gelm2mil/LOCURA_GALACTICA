@@ -46,7 +46,9 @@ const canvas=document.getElementById("juego");
 const ctx=canvas.getContext("2d");
 // Enemigo provisional del laboratorio: Annihilator.
 const imagenEnemigo=new Image();
-imagenEnemigo.src="assets/images/Annihilator.png";
+imagenEnemigo.src="https://raw.githubusercontent.com/gelm2mil/LOCURA_GALACTICA/main/assets/images/Annihilator.png";
+imagenEnemigo.onload=()=>console.info("ANNIHILATOR cargado correctamente.");
+imagenEnemigo.onerror=()=>console.error("No se pudo cargar Annihilator.png; revisa nombre y publicación en GitHub Pages.");
 const estadisticas=document.getElementById("estadisticas");
 const estado=document.getElementById("estado");
 const objetivoUI=document.getElementById("objetivoUI");
@@ -201,7 +203,15 @@ function disparar(automatico=false){
  disparos.push({x:nave.x+Math.cos(a)*27,y:nave.y+Math.sin(a)*27,vx:Math.cos(a)*12,vy:Math.sin(a)*12,vida:55,gastado:false,objetivo});
 }
 function explosion(x,y,color){
- for(let i=0;i<18;i++){const a=Math.random()*Math.PI*2,v=Math.random()*4+1;particulas.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vida:25,color});}
+ particulas.push({x,y,vx:0,vy:0,vida:13,vidaMax:13,color,tipo:"flash",radio:5});
+ particulas.push({x,y,vx:0,vy:0,vida:24,vidaMax:24,color,tipo:"anillo",radio:5});
+ for(let i=0;i<34;i++){
+  const a=Math.random()*Math.PI*2,v=Math.random()*6+1.4;
+  particulas.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,
+   vida:18+Math.random()*22,vidaMax:40,
+   color:i%4===0?"#fff2bd":color,tipo:i%5===0?"fragmento":"chispa",
+   radio:Math.random()*2.8+1});
+ }
 }
 function girarHacia(destino){
  let d=destino-nave.angulo;while(d>Math.PI)d-=Math.PI*2;while(d< -Math.PI)d+=Math.PI*2;
@@ -343,9 +353,34 @@ function dibujar(){
  ctx.clearRect(0,0,ancho,alto);ctx.fillStyle="#030611";ctx.fillRect(0,0,ancho,alto);
  estrellas.forEach(e=>{ctx.fillStyle="rgba(180,230,255,.65)";ctx.fillRect(e.x,e.y,e.r,e.r);});
  if(nave.destinoX!==null){ctx.save();ctx.strokeStyle="#00eaff";ctx.shadowBlur=12;ctx.shadowColor="#00eaff";ctx.beginPath();ctx.arc(nave.destinoX,nave.destinoY,9,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(nave.destinoX-14,nave.destinoY);ctx.lineTo(nave.destinoX+14,nave.destinoY);ctx.moveTo(nave.destinoX,nave.destinoY-14);ctx.lineTo(nave.destinoX,nave.destinoY+14);ctx.stroke();ctx.restore();}
- disparos.forEach(d=>{ctx.save();ctx.shadowBlur=18;ctx.shadowColor="#00eaff";ctx.strokeStyle="#00eaff";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(d.x-d.vx,d.y-d.vy);ctx.lineTo(d.x,d.y);ctx.stroke();ctx.restore();});
+ disparos.forEach(d=>{
+  ctx.save();ctx.shadowBlur=22;ctx.shadowColor="#00eaff";
+  ctx.strokeStyle="rgba(0,234,255,.35)";ctx.lineWidth=9;
+  ctx.beginPath();ctx.moveTo(d.x-d.vx*1.9,d.y-d.vy*1.9);ctx.lineTo(d.x,d.y);ctx.stroke();
+  ctx.strokeStyle="#00eaff";ctx.lineWidth=3.5;
+  ctx.beginPath();ctx.moveTo(d.x-d.vx*1.9,d.y-d.vy*1.9);ctx.lineTo(d.x,d.y);ctx.stroke();
+  ctx.fillStyle="#eaffff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(d.x,d.y,2.2,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+ });
  enemigos.forEach(dibujarEnemigo);
- particulas.forEach(p=>{ctx.globalAlpha=Math.max(0,p.vida/25);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,3);ctx.globalAlpha=1;});
+ particulas.forEach(p=>{
+   const progreso=1-p.vida/(p.vidaMax||40);
+   ctx.save();ctx.globalAlpha=Math.max(0,p.vida/(p.vidaMax||40));
+   ctx.shadowColor=p.color;ctx.shadowBlur=p.tipo==="flash"?28:13;
+   if(p.tipo==="anillo"){
+    ctx.strokeStyle=p.color;ctx.lineWidth=2.5*(1-progreso)+.5;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.radio+progreso*34,0,Math.PI*2);ctx.stroke();
+   }else if(p.tipo==="flash"){
+    const r=p.radio+progreso*15;
+    const grad=ctx.createRadialGradient(p.x,p.y,1,p.x,p.y,r);
+    grad.addColorStop(0,"#ffffff");grad.addColorStop(.35,p.color);grad.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=grad;ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();
+   }else{
+    ctx.strokeStyle=p.color;ctx.lineWidth=p.tipo==="fragmento"?2.8:1.8;
+    ctx.beginPath();ctx.moveTo(p.x-p.vx*1.8,p.y-p.vy*1.8);ctx.lineTo(p.x,p.y);ctx.stroke();
+   }
+   ctx.restore();
+  });
  dibujarNave();
 }
 function bucle(){actualizar();dibujar();requestAnimationFrame(bucle);}
