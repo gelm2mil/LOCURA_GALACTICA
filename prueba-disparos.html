@@ -47,6 +47,11 @@ const ctx=canvas.getContext("2d");
 // Enemigo provisional del laboratorio: Annihilator.
 const imagenEnemigo=new Image();
 imagenEnemigo.src="https://raw.githubusercontent.com/gelm2mil/LOCURA_GALACTICA/main/assets/images/Annihilator.png";
+// GRUPTO: nave del jugador (recurso PNG del repositorio).
+const imagenGrupTo=new Image();
+imagenGrupTo.src="https://raw.githubusercontent.com/gelm2mil/LOCURA_GALACTICA/main/assets/images/GRUPTO.png";
+imagenGrupTo.onload=()=>console.info("GRUPTO cargada correctamente.");
+imagenGrupTo.onerror=()=>console.error("No se pudo cargar GRUPTO.png; revisa el archivo en assets/images.");
 imagenEnemigo.onload=()=>console.info("ANNIHILATOR cargado correctamente.");
 imagenEnemigo.onerror=()=>console.error("No se pudo cargar Annihilator.png; revisa nombre y publicación en GitHub Pages.");
 const estadisticas=document.getElementById("estadisticas");
@@ -290,13 +295,26 @@ function actualizar(){
  actualizarBarrasNave();
 }
 function dibujarNave(){
- ctx.save();ctx.translate(nave.x,nave.y);ctx.rotate(nave.angulo);
- const intensidad=nave.velocidad/nave.velocidadMaxima;
- ctx.shadowBlur=15+intensidad*20;ctx.shadowColor="#00ffc8";ctx.fillStyle="#00ffc8";
- ctx.beginPath();ctx.moveTo(-17,-8);ctx.lineTo(-34-intensidad*12,0);ctx.lineTo(-17,8);ctx.fill();
- ctx.shadowColor="#00eaff";ctx.shadowBlur=20;ctx.fillStyle="#9baebc";ctx.strokeStyle="#00eaff";ctx.lineWidth=2;
- ctx.beginPath();ctx.moveTo(27,0);ctx.lineTo(8,-11);ctx.lineTo(-13,-9);ctx.lineTo(-22,0);ctx.lineTo(-13,9);ctx.lineTo(8,11);ctx.closePath();ctx.fill();ctx.stroke();
- ctx.fillStyle="#ff2b91";ctx.shadowColor="#ff2b91";ctx.beginPath();ctx.arc(12,0,4,0,Math.PI*2);ctx.fill();ctx.restore();
+ ctx.save();
+ ctx.translate(nave.x,nave.y);
+ // La imagen original apunta en diagonal hacia abajo-izquierda.
+ const orientacionOriginal=2.35;
+ ctx.rotate(nave.angulo-orientacionOriginal);
+ const intensidad=Math.max(0,Math.min(1,nave.velocidad/nave.velocidadMaxima));
+ if(imagenGrupTo.complete && imagenGrupTo.naturalWidth>0){
+  const anchoNave=142+intensidad*5;
+  const altoNave=96+intensidad*3;
+  ctx.shadowColor="#00eaff";
+  ctx.shadowBlur=13+intensidad*12;
+  ctx.drawImage(imagenGrupTo,-anchoNave/2,-altoNave/2,anchoNave,altoNave);
+ }else{
+  ctx.shadowBlur=15;ctx.shadowColor="#00ffc8";ctx.fillStyle="#00ffc8";
+  ctx.beginPath();ctx.moveTo(-17,-8);ctx.lineTo(-34-intensidad*12,0);ctx.lineTo(-17,8);ctx.fill();
+  ctx.shadowColor="#00eaff";ctx.shadowBlur=20;ctx.fillStyle="#9baebc";ctx.strokeStyle="#00eaff";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(27,0);ctx.lineTo(8,-11);ctx.lineTo(-13,-9);ctx.lineTo(-22,0);ctx.lineTo(-13,9);ctx.lineTo(8,11);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle="#ff2b91";ctx.shadowColor="#ff2b91";ctx.beginPath();ctx.arc(12,0,4,0,Math.PI*2);ctx.fill();
+ }
+ ctx.restore();
 }
 function dibujarEnemigo(e){
   const pulso=1+Math.sin(e.fase*2.2+e.pulso)*.035;
