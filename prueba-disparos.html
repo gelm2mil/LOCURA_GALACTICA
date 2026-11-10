@@ -71,7 +71,7 @@ const MAPA_ALTO = 5000;
 const CAMARA = { x: 0, y: 0 };
 
 const ORIENTACION_GRUPTO = 2.35;
-const ORIENTACION_ANNIHILATOR = -Math.PI / 2;
+const ORIENTACION_ANNIHILATOR = Math.PI;
 
 let ancho, alto, escala = 1;
 let disparos = [], disparosEnemigos = [], enemigos = [], particulas = [], misiles = [], cajasCarga = [], estrellas = [], nebulosas = [];
@@ -240,7 +240,11 @@ canvas.addEventListener("pointerdown", e => {
 window.addEventListener("pointerup", e => {
   if (e.button === 0) {
     mouse.izquierdo = false;
-    if (nave.atacando) { nave.destinoX = null; nave.destinoY = null; nave.velocidad = 0; }
+    if (nave.atacando) {
+      nave.destinoX = null;
+      nave.destinoY = null;
+      nave.ordenManual = false;
+    }
   }
 });
 
@@ -260,11 +264,11 @@ canvas.addEventListener("click", e => {
 
   if (enemigo) {
     if (nave.seleccionado !== enemigo) seleccionarEnemigo(enemigo);
-  } else {
+  } else if (!nave.atacando) {
     nave.destinoX = mouse.mundoX;
     nave.destinoY = mouse.mundoY;
     nave.ordenManual = true;
-    estado.textContent = nave.atacando ? "Estado: Atacando y maniobrando" : "Estado: Navegando";
+    estado.textContent = "Estado: Navegando";
   }
 });
 canvas.addEventListener("dblclick", e => {
@@ -301,13 +305,45 @@ function explosion(x, y, color){
   }
 }
 
+// Calcula un punto de intercepción usando la velocidad actual de GRUPTO.
+function calcularPuntoDeIntercepcion(origenX, origenY, objetivo, velocidadProyectil){
+  const vx = Math.cos(nave.angulo) * nave.velocidad;
+  const vy = Math.sin(nave.angulo) * nave.velocidad;
+  const rx = objetivo.x - origenX;
+  const ry = objetivo.y - origenY;
+
+  const a = vx * vx + vy * vy - velocidadProyectil * velocidadProyectil;
+  const b = 2 * (rx * vx + ry * vy);
+  const c = rx * rx + ry * ry;
+  const discriminante = b * b - 4 * a * c;
+
+  let tiempo = Math.hypot(rx, ry) / velocidadProyectil;
+  if (discriminante >= 0 && Math.abs(a) > 0.0001) {
+    const t1 = (-b - Math.sqrt(discriminante)) / (2 * a);
+    const t2 = (-b + Math.sqrt(discriminante)) / (2 * a);
+    const candidatos = [t1, t2].filter(t => t > 0 && Number.isFinite(t));
+    if (candidatos.length) tiempo = Math.min(...candidatos);
+  }
+
+  tiempo = Math.max(0, Math.min(tiempo, 2.8));
+  return {
+    x: objetivo.x + vx * tiempo,
+    y: objetivo.y + vy * tiempo
+  };
+}
+
 function dispararEnemigo(e){
-  const a = e.angulo;
   const velocidad = 7.5;
+  const punto = calcularPuntoDeIntercepcion(e.x, e.y, nave, velocidad);
+
+  // Pequeña dispersión: los enemigos anticipan, pero no aciertan siempre.
+  const dispersion = (Math.random() - 0.5) * 0.12;
+  const a = Math.atan2(punto.y - e.y, punto.x - e.x) + dispersion;
+
   disparosEnemigos.push({
-    x: e.x + Math.cos(a) * 28, y: e.y + Math.sin(a) * 28,
+    x: e.x + Math.cos(a) * 30, y: e.y + Math.sin(a) * 30,
     vx: Math.cos(a) * velocidad, vy: Math.sin(a) * velocidad,
-    vida: 95, danio: 8, acierta: true, velocidad
+    vida: 95, danio: 8, acierta: false, velocidad
   });
 }
 
@@ -396,11 +432,28 @@ function actualizar(){
       const nuevoAng = rotarSuave(anguloActual, anguloDeseado, 0.14);
       const vel = 9.5;
       m.vx = Math.cos(nuevoAng) * vel; m.vy = Math.sin(nuevoAng) * vel;
+      m.x += m.vx;
+      m.y += m.vy;
 
-      if (Math.hypot(dx, dy) < m.objetivo.radio + 10) {
+      if (Math.hypot(dx, dy) < m.objetivo.radio + 14) {
         m.vida = 0;
         aplicarDano(m.objetivo, 38);
         explosion(m.x, m.y, "#ff9d00");
+        if (m.objetivo.vida <= 0 && !m.objetivo.destruido) {
+          m.objetivo.destruido = true;
+          destruidos++;
+          explosion(m.objetivo.x, m.objetivo.y, "#ff2b91");
+          cajasCarga.push({
+            x: m.objetivo.x, y: m.objetivo.y,
+            creditos: 150 + Math.floor(Math.random() * 200),
+            mineral: 10 + Math.floor(Math.random() * 15), vida: 600
+          });
+          if (nave.seleccionado === m.objetivo) {
+            nave.seleccionado = null;
+            nave.atacando = false;
+            objetivoUI.textContent = "Objetivo: Destruido";
+          }
+        }
       }
     } else {
       m.x += m.vx; m.y += m.vy;
@@ -439,37 +492,63 @@ function actualizar(){
   });
   disparosEnemigos = disparosEnemigos.filter(d => d.vida > 0 && !d.impactado);
 
-  // IA TÁCTICA CORREGIDA: Persecución frontal y giros estables sin temblores
+  // IA TÁCTICA: detecta, gira la proa, maniobra y dispara anticipando a GRUPTO.
   enemigos.forEach(e => {
-    const haciaNave = Math.atan2(nave.y - e.y, nave.x - e.x);
-    const distNave = Math.hypot(nave.x - e.x, nave.y - e.y);
+    const dx = nave.x - e.x;
+    const dy = nave.y - e.y;
+    const distNave = Math.hypot(dx, dy);
     const jugadorEnBase = distBase <= baseEspacial.radio;
 
-    if (distNave < 1400 && !jugadorEnBase) {
-      // Giro suave y directo hacia el jugador
-      e.angulo = rotarSuave(e.angulo, haciaNave, 0.08);
+    if (distNave < 1500 && !jugadorEnBase) {
+      const haciaNave = Math.atan2(dy, dx);
 
-      // Avanzan en línea recta hacia la nave manteniendo distancia táctica
-      if (distNave > 180) {
-        e.x += Math.cos(e.angulo) * e.velocidad;
-        e.y += Math.sin(e.angulo) * e.velocidad;
+      // Mantiene la proa orientada hacia GRUPTO mediante giro progresivo.
+      e.angulo = rotarSuave(e.angulo, haciaNave, 0.075);
+
+      // Se aproxima si está lejos, retrocede si está demasiado cerca
+      // y realiza una órbita lateral cuando alcanza distancia de combate.
+      const distanciaIdeal = 340;
+      const margen = 55;
+      let direccionMovimiento = e.angulo;
+      let factorVelocidad = 0;
+
+      if (distNave > distanciaIdeal + margen) {
+        factorVelocidad = 1;
+      } else if (distNave < distanciaIdeal - margen) {
+        direccionMovimiento = e.angulo + Math.PI;
+        factorVelocidad = 0.72;
+      } else {
+        // Órbita suave: evita que todos los NPC se amontonen en un punto.
+        const sentido = e.fase < Math.PI ? 1 : -1;
+        direccionMovimiento = e.angulo + sentido * 0.72;
+        factorVelocidad = 0.48;
       }
 
-      let difAngulo = Math.abs(e.angulo - haciaNave);
-      while (difAngulo > Math.PI) difAngulo -= Math.PI * 2;
-      difAngulo = Math.abs(difAngulo);
+      e.x += Math.cos(direccionMovimiento) * e.velocidad * factorVelocidad;
+      e.y += Math.sin(direccionMovimiento) * e.velocidad * factorVelocidad;
 
-      // Disparan únicamente cuando tienen enfrente a la nave a menos de 600px
-      if (distNave < 600 && difAngulo < 0.6 && performance.now() >= e.proximoDisparo) {
+      // Dispara solo cuando la proa está razonablemente alineada.
+      const diferencia = Math.atan2(
+        Math.sin(haciaNave - e.angulo),
+        Math.cos(haciaNave - e.angulo)
+      );
+
+      if (distNave < 650 && Math.abs(diferencia) < 0.38 &&
+          performance.now() >= e.proximoDisparo) {
         dispararEnemigo(e);
-        e.proximoDisparo = performance.now() + 1300 + Math.random() * 500;
+        e.proximoDisparo = performance.now() + 1250 + Math.random() * 650;
       }
     } else {
-      // Patrulla suave en órbita
-      e.angulo += 0.005;
-      e.x += Math.cos(e.angulo) * 0.8;
-      e.y += Math.sin(e.angulo) * 0.8;
+      // Patrulla lenta con rumbo persistente cuando GRUPTO está lejos o protegido.
+      e.fase += 0.008;
+      e.angulo = rotarSuave(e.angulo, e.angulo + Math.sin(e.fase) * 0.012, 0.012);
+      e.x += Math.cos(e.angulo) * 0.45;
+      e.y += Math.sin(e.angulo) * 0.45;
     }
+
+    // Mantiene a los NPC dentro de los límites del sector.
+    e.x = Math.max(35, Math.min(MAPA_ANCHO - 35, e.x));
+    e.y = Math.max(35, Math.min(MAPA_ALTO - 35, e.y));
   });
 
   cajasCarga.forEach(c => {
