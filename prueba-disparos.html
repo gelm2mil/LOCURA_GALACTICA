@@ -66,9 +66,9 @@ function ajustar(){
 window.addEventListener("resize",ajustar);ajustar();
 
 function aplicarDano(objetivo, dano){
- // El impacto se reparte: 80% al escudo y 20% a la vida.
- const danoEscudo=dano*.8;
- const danoVida=dano*.2;
+ // El impacto se reparte: 60% al escudo y 40% a la vida.
+ const danoEscudo=dano*.6;
+ const danoVida=dano*.4;
  objetivo.escudo=Math.max(0,objetivo.escudo-danoEscudo);
  objetivo.vida=Math.max(0,objetivo.vida-danoVida);
 }
@@ -88,6 +88,18 @@ function crearEnemigo(){
  enemigos.push({x,y,escudo:70,escudoMaximo:70,vida:50,vidaMaxima:50,radio:17+Math.random()*4,velocidad:.45+Math.random()*.3,destruido:false,fase:Math.random()*Math.PI*2, giro:Math.random()<.5?-1:1, tipo:Math.floor(Math.random()*3), pulso:Math.random()*Math.PI*2});
 }
 for(let i=0;i<6;i++)crearEnemigo();
+
+// Objetivo especial de entrenamiento: nave tipo GRUPTO con reservas mayores.
+function crearGrupToPrueba(){
+ enemigos.push({
+  x:ancho*.68,y:alto*.48,
+  escudo:180,escudoMaximo:180,vida:180,vidaMaxima:180,
+  radio:24,velocidad:.28,destruido:false,
+  fase:Math.random()*Math.PI*2,giro:1,tipo:3,
+  pulso:Math.random()*Math.PI*2,esGrupToPrueba:true
+ });
+}
+crearGrupToPrueba();
 
 function seleccionarEnemigo(e){
  nave.seleccionado=e;nave.atacando=false;nave.destinoX=null;nave.destinoY=null;nave.velocidad=0;nave.ordenManual=false;
@@ -207,6 +219,9 @@ function actualizarMovimiento(){
   if(mouse.izquierdo&&nave.destinoX!==null&&nave.destinoY!==null){
    // Movimiento continuo hacia el cursor; la nave conserva el frente hacia el objetivo.
    const vx=nave.destinoX-nave.x,vy=nave.destinoY-nave.y,distancia=Math.hypot(vx,vy);
+   // Aunque GRUPTO maniobre siguiendo el mouse, mantiene el morro
+   // orientado hacia el enemigo fijado como objetivo.
+   girarHacia(Math.atan2(e.y-nave.y,e.x-nave.x));
    if(distancia>5){
     nave.velocidad=Math.min(nave.velocidad+nave.aceleracion*1.7,nave.velocidadMaxima+1.6);
     const avance=Math.min(nave.velocidad,distancia);
@@ -247,7 +262,7 @@ function actualizar(){
   disparos.forEach(d=>{
    if(d.gastado||(d.objetivo&&d.objetivo!==e))return;
    if(Math.hypot(d.x-e.x,d.y-e.y)<e.radio+4){
-    d.gastado=true;aplicarDano(e,10);explosion(d.x,d.y,"#00eaff");
+    d.gastado=true;aplicarDano(e,6);explosion(d.x,d.y,"#00eaff");
     if(e.vida<=0&&!e.destruido){
      e.destruido=true;destruidos++;explosion(e.x,e.y,"#ff2b91");
      if(nave.seleccionado===e){nave.seleccionado=null;nave.atacando=false;objetivoUI.textContent="Objetivo: Destruido";estado.textContent="Estado: Objetivo destruido";}
@@ -275,7 +290,17 @@ function dibujarEnemigo(e){
  const giro=e.fase*e.giro*.35;
  ctx.save();ctx.translate(e.x,e.y);ctx.rotate(giro);ctx.scale(pulso,1/pulso);
  ctx.shadowBlur=17+Math.sin(e.fase*3)*5;ctx.shadowColor=e.tipo===1?"#ff8a32":"#ff2b91";
- const color=e.tipo===1?"#ff8a32":e.tipo===2?"#b45cff":"#ff2b91";
+ const color=e.esGrupToPrueba?"#00eaff":e.tipo===1?"#ff8a32":e.tipo===2?"#b45cff":"#ff2b91";
+ if(e.esGrupToPrueba){
+  // Silueta de nave de entrenamiento inspirada en GRUPTO.
+  ctx.shadowBlur=20;ctx.shadowColor="#00eaff";
+  ctx.fillStyle="#173b50";ctx.strokeStyle="#00eaff";ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(25,0);ctx.lineTo(7,-13);ctx.lineTo(-15,-11);
+  ctx.lineTo(-24,0);ctx.lineTo(-15,11);ctx.lineTo(7,13);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle="#ff36b5";ctx.beginPath();ctx.arc(2,0,5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="#36ffc8";ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(-12,-9);ctx.lineTo(-27,-19);ctx.moveTo(-12,9);ctx.lineTo(-27,19);ctx.stroke();
+ }else{
  // Aletas/tentáculos animados
  for(let i=0;i<4;i++){
   const lado=i%2===0?-1:1, fila=Math.floor(i/2);
@@ -293,6 +318,7 @@ function dibujarEnemigo(e){
  ctx.lineTo(-16,7);ctx.lineTo(-5,16);ctx.lineTo(9,12);ctx.closePath();ctx.fill();ctx.stroke();
  ctx.fillStyle="#ffd9f2";ctx.shadowBlur=12;ctx.beginPath();ctx.arc(5,0,5+Math.sin(e.fase*4)*1.2,0,Math.PI*2);ctx.fill();
  ctx.fillStyle=color;ctx.shadowBlur=14;ctx.beginPath();ctx.arc(-9,-5,2.5,0,Math.PI*2);ctx.arc(-9,5,2.5,0,Math.PI*2);ctx.fill();
+ }
  // Barras independientes de escudo y vida del enemigo
  ctx.rotate(-giro);ctx.scale(1/pulso,pulso);
  ctx.shadowBlur=0;
