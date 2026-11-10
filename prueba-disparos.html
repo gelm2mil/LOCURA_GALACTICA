@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#030611">
-<title>LOCURA GALÁCTICA — Sistema de Objetivo Fijo</title>
+<title>LOCURA GALÁCTICA — Combate Óptimo</title>
 <style>
 *{box-sizing:border-box}
 html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#030611;color:#00eaff;font-family:Arial,sans-serif}
@@ -35,7 +35,7 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#030611;col
   <div class="barra"><span>VIDA GRUPTO</span><div class="pista"><i id="vidaNaveBarra"></i></div><b id="vidaNaveTexto">100 / 100</b></div>
   <div class="barra"><span>RECARGA MISIL</span><div class="pista"><i id="misilNaveBarra"></i></div><b id="misilNaveTexto">LISTO</b></div>
   <div id="instrucciones">
-    Clic: seleccionar enemigo / fijar destino<br>
+    Clic: seleccionar enemigo (fácil)<br>
     Doble clic: activar ataque continuo<br>
     Mouse presionado: maniobrar libremente<br>
     CTRL: activar/desactivar ataque<br>
@@ -155,7 +155,7 @@ function crearEnemigo(){
   
   enemigos.push({
     x, y, angulo: Math.random() * Math.PI * 2, escudo: 80, escudoMaximo: 80, vida: 60, vidaMaxima: 60,
-    radio: 22, velocidad: 1.8 + Math.random() * .6, destruido: false,
+    radio: 26, velocidad: 1.8 + Math.random() * .6, destruido: false,
     fase: Math.random() * Math.PI * 2, tipo: Math.floor(Math.random() * 3),
     pulso: Math.random() * Math.PI * 2, proximoDisparo: performance.now() + 800 + Math.random() * 1200
   });
@@ -241,11 +241,12 @@ window.addEventListener("pointerup", e => {
   }
 });
 
+// HITBOX DE SELECCIÓN AMPLIADA (42px de radio para hacer clic sin esfuerzo)
 function enemigoBajoPuntero(mx, my){
   let elegido = null, menor = Infinity;
   for (const e of enemigos) {
     const d = Math.hypot(mx - e.x, my - e.y);
-    if (d <= e.radio + 15 && d < menor) { elegido = e; menor = d; }
+    if (d <= 42 && d < menor) { elegido = e; menor = d; }
   }
   return elegido;
 }
@@ -300,11 +301,11 @@ function explosion(x, y, color){
 
 function dispararEnemigo(e){
   const angulo = Math.atan2(nave.y - e.y, nave.x - e.x);
-  const velocidad = 6.0;
+  const velocidad = 6.5;
   disparosEnemigos.push({
     x: e.x + Math.cos(angulo) * 22, y: e.y + Math.sin(angulo) * 22,
     vx: Math.cos(angulo) * velocidad, vy: Math.sin(angulo) * velocidad,
-    vida: 100, danio: 8, acierta: true, velocidad
+    vida: 90, danio: 8, acierta: true, velocidad
   });
 }
 
@@ -357,7 +358,6 @@ function actualizarMovimiento(){
     if (nave.velocidad < .08) nave.velocidad = 0;
   }
 
-  // Rotación suave del modelo visual de GRUPTO
   const anguloObjetivo = (nave.atacando && nave.seleccionado) ? Math.atan2(nave.seleccionado.y - nave.y, nave.seleccionado.x - nave.x) : nave.angulo;
   nave.anguloVisual = rotarSuave(nave.anguloVisual, anguloObjetivo, 0.12);
 
@@ -385,7 +385,6 @@ function actualizar(){
     nave.escudo = Math.min(nave.escudoMaximo, nave.escudo + 0.15);
   }
 
-  // Misiles Guiados a Objetivo Seleccionado
   misiles.forEach(m => {
     m.vida--;
     if (m.objetivo && enemigos.includes(m.objetivo)) {
@@ -407,11 +406,8 @@ function actualizar(){
   });
   misiles = misiles.filter(m => m.vida > 0);
 
-  // Disparos del Jugador
   disparos.forEach(d => {
     d.x += d.vx; d.y += d.vy; d.vida--;
-    
-    // IMPACTO EXCLUSIVO: Si hay objetivo fijado, SOLO daña a ese objetivo
     const objetivoValido = (d.objetivo && enemigos.includes(d.objetivo)) ? d.objetivo : null;
     if (objetivoValido) {
       if (Math.hypot(d.x - objetivoValido.x, d.y - objetivoValido.y) < objetivoValido.radio + 8) {
@@ -430,7 +426,6 @@ function actualizar(){
   });
   disparos = disparos.filter(d => d.vida > 0 && !d.gastado);
 
-  // Disparos Enemigos
   disparosEnemigos.forEach(d => {
     d.x += d.vx; d.y += d.vy; d.vida--;
     if (distBase > baseEspacial.radio && !d.impactado && Math.hypot(d.x - nave.x, d.y - nave.y) < 27) {
@@ -442,28 +437,29 @@ function actualizar(){
   });
   disparosEnemigos = disparosEnemigos.filter(d => d.vida > 0 && !d.impactado);
 
-  // Comportamiento Enemigo Inteligente (Persecución y Orientación)
+  // IA ENEMIGA CORREGIDA: Solo disparan si están cerca (< 550px) y apuntando a GRUPTO
   enemigos.forEach(e => {
     e.fase += .035;
     const haciaNave = Math.atan2(nave.y - e.y, nave.x - e.x);
     const distNave = Math.hypot(nave.x - e.x, nave.y - e.y);
     
-    if (distNave < 1100 && distBase > baseEspacial.radio) {
-      // Rotar suavemente hacia la nave
+    if (distNave < 1200 && distBase > baseEspacial.radio) {
       e.angulo = rotarSuave(e.angulo, haciaNave, 0.08);
       
-      // Avanzar manteniendo distancia táctica
       if (distNave > 180) {
         e.x += Math.cos(e.angulo) * e.velocidad;
         e.y += Math.sin(e.angulo) * e.velocidad;
       }
       
-      if (distNave < 450 && performance.now() >= e.proximoDisparo) {
+      // Condición estricta: Rango menor a 550px y alineación frontal con la nave
+      let diferenciaAngulo = Math.abs(e.angulo - haciaNave);
+      if (diferenciaAngulo > Math.PI) diferenciaAngulo = Math.PI * 2 - diferenciaAngulo;
+
+      if (distNave < 550 && diferenciaAngulo < 0.6 && performance.now() >= e.proximoDisparo) {
         dispararEnemigo(e);
-        e.proximoDisparo = performance.now() + 1200 + Math.random() * 600;
+        e.proximoDisparo = performance.now() + 1400 + Math.random() * 600;
       }
     } else {
-      // Patrullar suavemente en círculos
       e.angulo += 0.01;
       e.x += Math.cos(e.angulo) * (e.velocidad * 0.4);
       e.y += Math.sin(e.angulo) * (e.velocidad * 0.4);
@@ -573,7 +569,6 @@ function dibujarEnemigo(e){
 
   ctx.save();
   ctx.translate(relX, relY);
-  // Orientar el sprite según el ángulo real del enemigo
   ctx.rotate(e.angulo);
   ctx.scale(pulso, 1 / pulso);
 
