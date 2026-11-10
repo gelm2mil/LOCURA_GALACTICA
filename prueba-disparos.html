@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,633 +5,277 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#030611">
 <title>LOCURA GALÁCTICA — Laboratorio de Combate</title>
-
 <style>
-* { box-sizing: border-box; }
-
-html, body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    overflow: hidden;
-    background: #030611;
-    color: #00eaff;
-    font-family: Arial, sans-serif;
-}
-
-#juego {
-    display: block;
-    width: 100%;
-    height: 100%;
-    cursor: crosshair;
-}
-
-#interfaz {
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 2;
-    padding: 12px 16px;
-    background: rgba(2,10,25,.88);
-    border: 1px solid #00eaff;
-    border-radius: 8px;
-    box-shadow: 0 0 15px #00eaff55;
-    pointer-events: none;
-    font-size: 13px;
-}
-
-#interfaz strong {
-    color: white;
-    letter-spacing: 2px;
-}
-
-#instrucciones {
-    color: #b8dce9;
-    font-size: 12px;
-    line-height: 1.5;
-    margin-top: 7px;
-}
-
-#volver {
-    position: fixed;
-    right: 15px;
-    top: 15px;
-    z-index: 3;
-    padding: 10px 14px;
-    color: #00eaff;
-    background: #061426;
-    border: 1px solid #00eaff;
-    border-radius: 6px;
-    text-decoration: none;
-}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#030611;color:#00eaff;font-family:Arial,sans-serif}
+#juego{display:block;width:100%;height:100%;cursor:crosshair}
+#interfaz{position:fixed;top:15px;left:15px;z-index:2;padding:12px 16px;background:rgba(2,10,25,.9);border:1px solid #00eaff;border-radius:8px;box-shadow:0 0 15px #00eaff55;pointer-events:none;font-size:13px;line-height:1.45}
+#interfaz strong{color:white;letter-spacing:2px}
+#instrucciones{color:#b8dce9;font-size:12px;margin-top:7px}
+#volver{position:fixed;right:15px;top:15px;z-index:3;padding:10px 14px;color:#00eaff;background:#061426;border:1px solid #00eaff;border-radius:6px;text-decoration:none}
 </style>
 </head>
-
 <body>
-
 <div id="interfaz">
-    <strong>LOCURA GALÁCTICA</strong>
-    <div>GRUPTO — NAVEGACIÓN Y COMBATE</div>
-    <div id="estadisticas">Objetivos: 0 | Destruidos: 0</div>
-    <div id="estado">Estado: Explorando</div>
-
-    <div id="instrucciones">
-        Clic en espacio: navegar<br>
-        Clic en enemigo: seleccionar y atacar<br>
-        WASD o flechas: movimiento manual<br>
-        Espacio: disparo manual
-    </div>
+  <strong>LOCURA GALÁCTICA</strong>
+  <div>GRUPTO — NAVEGACIÓN Y COMBATE</div>
+  <div id="estadisticas">Objetivos: 0 | Destruidos: 0</div>
+  <div id="estado">Estado: Explorando</div>
+  <div id="objetivoUI">Objetivo: Ninguno</div>
+  <div id="instrucciones">
+    Clic: seleccionar enemigo<br>
+    Doble clic o ENTER: atacar<br>
+    Clic en espacio: moverte a ese punto<br>
+    WASD/flechas: movimiento manual<br>
+    ESPACIO: disparo manual
+  </div>
 </div>
-
 <a id="volver" href="index.html">SALIR</a>
-
 <canvas id="juego"></canvas>
-
 <script>
 "use strict";
+const canvas=document.getElementById("juego");
+const ctx=canvas.getContext("2d");
+const estadisticas=document.getElementById("estadisticas");
+const estado=document.getElementById("estado");
+const objetivoUI=document.getElementById("objetivoUI");
+let ancho,alto,disparos=[],enemigos=[],particulas=[],estrellas=[],destruidos=0,ultimoDisparo=0;
+const teclas={};
+const nave={x:0,y:0,angulo:0,velocidad:0,velocidadMaxima:4.2,aceleracion:.13,frenado:.94,destinoX:null,destinoY:null,seleccionado:null,atacando:false,ordenManual:false};
+const mouse={x:0,y:0,izquierdo:false};
 
-const canvas = document.getElementById("juego");
-const ctx = canvas.getContext("2d");
-
-const estadisticas = document.getElementById("estadisticas");
-const estado = document.getElementById("estado");
-
-let ancho, alto;
-let disparos = [];
-let enemigos = [];
-let particulas = [];
-let estrellas = [];
-let destruidos = 0;
-let ultimoDisparo = 0;
-
-const teclas = {};
-
-const nave = {
-    x: 0,
-    y: 0,
-    angulo: 0,
-    velocidad: 0,
-    velocidadMaxima: 4.2,
-    aceleracion: 0.13,
-    frenado: 0.94,
-    destinoX: null,
-    destinoY: null,
-    objetivo: null
-};
-
-const mouse = { x: 0, y: 0 };
-
-function ajustar() {
-    const escala = Math.min(window.devicePixelRatio || 1, 2);
-
-    ancho = window.innerWidth;
-    alto = window.innerHeight;
-
-    canvas.width = ancho * escala;
-    canvas.height = alto * escala;
-
-    ctx.setTransform(escala, 0, 0, escala, 0, 0);
-
-    if (!nave.x) {
-        nave.x = ancho / 2;
-        nave.y = alto / 2;
-    }
-
-    estrellas = Array.from({length: 130}, () => ({
-        x: Math.random() * ancho,
-        y: Math.random() * alto,
-        r: Math.random() * 1.4 + .3
-    }));
+function ajustar(){
+ const escala=Math.min(window.devicePixelRatio||1,2);
+ ancho=window.innerWidth;alto=window.innerHeight;
+ canvas.width=ancho*escala;canvas.height=alto*escala;ctx.setTransform(escala,0,0,escala,0,0);
+ if(!nave.x){nave.x=ancho/2;nave.y=alto/2;}
+ estrellas=Array.from({length:130},()=>({x:Math.random()*ancho,y:Math.random()*alto,r:Math.random()*1.4+.3}));
 }
+window.addEventListener("resize",ajustar);ajustar();
 
-window.addEventListener("resize", ajustar);
-ajustar();
-
-function crearEnemigo() {
-    const lado = Math.floor(Math.random() * 4);
-    let x = 0, y = 0;
-
-    if (lado === 0) {
-        x = Math.random() * ancho;
-        y = -30;
-    }
-
-    if (lado === 1) {
-        x = ancho + 30;
-        y = Math.random() * alto;
-    }
-
-    if (lado === 2) {
-        x = Math.random() * ancho;
-        y = alto + 30;
-    }
-
-    if (lado === 3) {
-        x = -30;
-        y = Math.random() * alto;
-    }
-
-    enemigos.push({
-        x, y,
-        vida: 3,
-        radio: 17,
-        velocidad: 0.55 + Math.random() * 0.35,
-        destruido: false
-    });
+function crearEnemigo(){
+ const lado=Math.floor(Math.random()*4);let x=0,y=0;
+ if(lado===0){x=Math.random()*ancho;y=-30;}
+ if(lado===1){x=ancho+30;y=Math.random()*alto;}
+ if(lado===2){x=Math.random()*ancho;y=alto+30;}
+ if(lado===3){x=-30;y=Math.random()*alto;}
+ enemigos.push({x,y,vida:4,vidaMaxima:4,radio:17+Math.random()*4,velocidad:.45+Math.random()*.3,destruido:false,fase:Math.random()*Math.PI*2, giro:Math.random()<.5?-1:1, tipo:Math.floor(Math.random()*3), pulso:Math.random()*Math.PI*2});
 }
+for(let i=0;i<6;i++)crearEnemigo();
 
-for (let i = 0; i < 6; i++) crearEnemigo();
+function seleccionarEnemigo(e){
+ nave.seleccionado=e;nave.atacando=false;nave.destinoX=null;nave.destinoY=null;nave.velocidad=0;nave.ordenManual=false;
+ estado.textContent="Estado: Objetivo seleccionado";
+ objetivoUI.textContent="Objetivo: Seleccionado — esperando orden";
+}
+function iniciarAtaque(){
+ if(!nave.seleccionado||!enemigos.includes(nave.seleccionado))return;
+ nave.atacando=true;nave.destinoX=null;nave.destinoY=null;nave.ordenManual=false;
+ estado.textContent="Estado: Atacando objetivo";objetivoUI.textContent="Objetivo: Ataque activo";
+}
+window.addEventListener("keydown",e=>{
+ const k=e.key.toLowerCase();
+ teclas[k]=true;
+ if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();
 
-window.addEventListener("keydown", e => {
-    teclas[e.key.toLowerCase()] = true;
+ // ENTER o ENTER del teclado numerico: atacar al objetivo seleccionado.
+ if((e.key==="Enter" || e.code==="NumpadEnter") && !e.repeat){
+  e.preventDefault();
+  e.stopPropagation();
+  iniciarAtaque();
+ }
+ if(e.code==="Space"&&!e.repeat)disparar(false);
+},{capture:true});
+window.addEventListener("keyup",e=>{
+ teclas[e.key.toLowerCase()]=false;
+});
+canvas.addEventListener("mousemove",e=>{
+ const r=canvas.getBoundingClientRect();
+ mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;
+ if(mouse.izquierdo){
+  nave.destinoX=mouse.x;nave.destinoY=mouse.y;nave.ordenManual=true;
+ }
+});
+canvas.addEventListener("pointerdown",e=>{
+ if(e.button!==0)return;
+ mouse.izquierdo=true;
+ const r=canvas.getBoundingClientRect();
+ mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;
+ if(nave.atacando){nave.destinoX=mouse.x;nave.destinoY=mouse.y;nave.ordenManual=true;}
+});
+window.addEventListener("pointerup",e=>{
+ if(e.button===0){
+  mouse.izquierdo=false;
+  if(nave.atacando){nave.destinoX=null;nave.destinoY=null;nave.ordenManual=true;nave.velocidad=0;}
+ }
+});
+canvas.addEventListener("pointercancel",()=>{mouse.izquierdo=false;});
+canvas.addEventListener("contextmenu",e=>e.preventDefault());
 
-    if (
-        ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "]
-        .includes(e.key)
-    ) {
-        e.preventDefault();
-    }
+function enemigoBajoPuntero(x,y){
+ let elegido=null,menor=Infinity;
+ for(const e of enemigos){
+  const d=Math.hypot(x-e.x,y-e.y);
+  if(d<=e.radio+13&&d<menor){elegido=e;menor=d;}
+ }
+ return elegido;
+}
+canvas.addEventListener("click",e=>{
+ if(e.button!==0)return;
+ const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+ const enemigo=enemigoBajoPuntero(x,y);
 
-    if (e.code === "Space") disparar();
+ if(enemigo){
+  // Un clic cambia la selección y cancela el ataque anterior.
+  if(nave.seleccionado!==enemigo)seleccionarEnemigo(enemigo);
+ }else{
+  // Un clic en el espacio NO cancela un ataque ni borra el objetivo.
+  // Si no hay ataque activo, permite navegar normalmente.
+  // El movimiento y el ataque son independientes:
+  // el clic fija un destino sin cancelar el objetivo ni el disparo.
+  nave.destinoX=x;
+  nave.destinoY=y;
+  nave.ordenManual=true;
+  estado.textContent=nave.atacando?"Estado: Atacando y navegando":"Estado: Navegando";
+ }
+});
+canvas.addEventListener("dblclick",e=>{
+ if(e.button!==0)return;
+ const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+ const enemigo=enemigoBajoPuntero(x,y);
+ if(enemigo){if(nave.seleccionado!==enemigo)seleccionarEnemigo(enemigo);iniciarAtaque();}
 });
 
-window.addEventListener("keyup", e => {
-    teclas[e.key.toLowerCase()] = false;
-});
-
-canvas.addEventListener("mousemove", e => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-});
-
-canvas.addEventListener("contextmenu", e => {
-    e.preventDefault();
-});
-
-canvas.addEventListener("mousedown", e => {
-    if (e.button !== 0) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Buscar si el clic corresponde a un enemigo.
-    let encontrado = null;
-
-    for (const enemigo of enemigos) {
-        const distancia = Math.hypot(
-            x - enemigo.x,
-            y - enemigo.y
-        );
-
-        if (distancia < enemigo.radio + 10) {
-            encontrado = enemigo;
-            break;
-        }
-    }
-
-    if (encontrado) {
-        nave.objetivo = encontrado;
-        nave.destinoX = null;
-        nave.destinoY = null;
-        estado.textContent = "Estado: Objetivo seleccionado";
-    } else {
-        nave.objetivo = null;
-        nave.destinoX = x;
-        nave.destinoY = y;
-        estado.textContent = "Estado: Navegando";
-    }
-});
-
-function disparar() {
-    const angulo = nave.angulo;
-    const distancia = 27;
-
-    disparos.push({
-        x: nave.x + Math.cos(angulo) * distancia,
-        y: nave.y + Math.sin(angulo) * distancia,
-        vx: Math.cos(angulo) * 12,
-        vy: Math.sin(angulo) * 12,
-        vida: 55,
-        gastado: false
-    });
+function disparar(automatico=false){
+ const objetivo=automatico?nave.seleccionado:null;
+ const a=objetivo?Math.atan2(objetivo.y-nave.y,objetivo.x-nave.x):nave.angulo;
+ disparos.push({x:nave.x+Math.cos(a)*27,y:nave.y+Math.sin(a)*27,vx:Math.cos(a)*12,vy:Math.sin(a)*12,vida:55,gastado:false,objetivo});
 }
-
-function explosion(x, y, color) {
-    for (let i = 0; i < 18; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const v = Math.random() * 4 + 1;
-
-        particulas.push({
-            x, y,
-            vx: Math.cos(a) * v,
-            vy: Math.sin(a) * v,
-            vida: 25,
-            color
-        });
-    }
+function explosion(x,y,color){
+ for(let i=0;i<18;i++){const a=Math.random()*Math.PI*2,v=Math.random()*4+1;particulas.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,vida:25,color});}
 }
-
-// Giro progresivo sin saltos bruscos.
-function girarHacia(destino) {
-    let diferencia = destino - nave.angulo;
-
-    while (diferencia > Math.PI) {
-        diferencia -= Math.PI * 2;
-    }
-
-    while (diferencia < -Math.PI) {
-        diferencia += Math.PI * 2;
-    }
-
-    nave.angulo += Math.max(
-        -0.09,
-        Math.min(0.09, diferencia)
-    );
+function girarHacia(destino){
+ let d=destino-nave.angulo;while(d>Math.PI)d-=Math.PI*2;while(d< -Math.PI)d+=Math.PI*2;
+ nave.angulo+=Math.max(-.09,Math.min(.09,d));
 }
-
-function actualizarMovimiento() {
-
-    let movimientoManual = false;
-
-    let dx = 0;
-    let dy = 0;
-
-    if (teclas["w"] || teclas["arrowup"]) dy--;
-    if (teclas["s"] || teclas["arrowdown"]) dy++;
-    if (teclas["a"] || teclas["arrowleft"]) dx--;
-    if (teclas["d"] || teclas["arrowright"]) dx++;
-
-    if (dx !== 0 || dy !== 0) {
-        movimientoManual = true;
-
-        nave.destinoX = null;
-        nave.destinoY = null;
-        nave.objetivo = null;
-
-        const angulo = Math.atan2(dy, dx);
-
-        girarHacia(angulo);
-
-        nave.velocidad = Math.min(
-            nave.velocidad + nave.aceleracion,
-            nave.velocidadMaxima
-        );
-
-        nave.x += Math.cos(nave.angulo) * nave.velocidad;
-        nave.y += Math.sin(nave.angulo) * nave.velocidad;
-
-        estado.textContent = "Estado: Movimiento manual";
-    }
-
-    if (!movimientoManual && nave.objetivo &&
-        enemigos.includes(nave.objetivo)) {
-
-        const e = nave.objetivo;
-
-        const distancia = Math.hypot(
-            e.x - nave.x,
-            e.y - nave.y
-        );
-
-        girarHacia(
-            Math.atan2(e.y - nave.y, e.x - nave.x)
-        );
-
-        // Mantener una distancia de combate.
-        if (distancia > 230) {
-            nave.velocidad = Math.min(
-                nave.velocidad + nave.aceleracion,
-                nave.velocidadMaxima
-            );
-
-            nave.x += Math.cos(nave.angulo) * nave.velocidad;
-            nave.y += Math.sin(nave.angulo) * nave.velocidad;
-        } else {
-            nave.velocidad *= nave.frenado;
-        }
-
-        // Ataque automático.
-        if (distancia < 650 &&
-            performance.now() - ultimoDisparo > 350) {
-
-            disparar();
-            ultimoDisparo = performance.now();
-        }
-
-        estado.textContent = "Estado: Atacando objetivo";
-    }
-
-    else if (!movimientoManual &&
-        nave.destinoX !== null &&
-        nave.destinoY !== null) {
-
-        const dx = nave.destinoX - nave.x;
-        const dy = nave.destinoY - nave.y;
-        const distancia = Math.hypot(dx, dy);
-
-        if (distancia > 9) {
-            girarHacia(Math.atan2(dy, dx));
-
-            nave.velocidad = Math.min(
-                nave.velocidad + nave.aceleracion,
-                nave.velocidadMaxima
-            );
-
-            const avance = Math.min(nave.velocidad, distancia);
-
-            nave.x += Math.cos(nave.angulo) * avance;
-            nave.y += Math.sin(nave.angulo) * avance;
-
-        } else {
-            nave.velocidad *= nave.frenado;
-
-            if (nave.velocidad < 0.12) {
-                nave.velocidad = 0;
-                nave.destinoX = null;
-                nave.destinoY = null;
-
-                estado.textContent = "Estado: En posición";
-            }
-        }
-    }
-
-    else if (!movimientoManual) {
-        nave.velocidad *= nave.frenado;
-
-        if (nave.velocidad < 0.08) {
-            nave.velocidad = 0;
-        }
-    }
-
-    nave.x = Math.max(25, Math.min(ancho - 25, nave.x));
-    nave.y = Math.max(25, Math.min(alto - 25, nave.y));
+function actualizarMovimiento(){
+ let dx=0,dy=0;
+ if(teclas.w||teclas.arrowup)dy--;if(teclas.s||teclas.arrowdown)dy++;
+ if(teclas.a||teclas.arrowleft)dx--;if(teclas.d||teclas.arrowright)dx++;
+ if(dx||dy){
+  nave.destinoX=null;nave.destinoY=null;nave.seleccionado=null;nave.atacando=false;
+  objetivoUI.textContent="Objetivo: Ninguno";girarHacia(Math.atan2(dy,dx));
+  nave.velocidad=Math.min(nave.velocidad+nave.aceleracion,nave.velocidadMaxima);
+  nave.x+=Math.cos(nave.angulo)*nave.velocidad;nave.y+=Math.sin(nave.angulo)*nave.velocidad;
+  estado.textContent="Estado: Movimiento manual";
+ }else if(nave.atacando&&nave.seleccionado&&enemigos.includes(nave.seleccionado)){
+  const e=nave.seleccionado,d=Math.hypot(e.x-nave.x,e.y-nave.y);
+  if(mouse.izquierdo&&nave.destinoX!==null&&nave.destinoY!==null){
+   // Movimiento continuo hacia el cursor; la nave conserva el frente hacia el objetivo.
+   const vx=nave.destinoX-nave.x,vy=nave.destinoY-nave.y,distancia=Math.hypot(vx,vy);
+   if(distancia>5){
+    nave.velocidad=Math.min(nave.velocidad+nave.aceleracion*1.7,nave.velocidadMaxima+1.6);
+    const avance=Math.min(nave.velocidad,distancia);
+    nave.x+=(vx/distancia)*avance;nave.y+=(vy/distancia)*avance;
+   }else nave.velocidad*=nave.frenado;
+   estado.textContent="Estado: Atacando — maniobra con mouse";
+  }else if(!nave.ordenManual){
+   girarHacia(Math.atan2(e.y-nave.y,e.x-nave.x));
+   if(d>230){nave.velocidad=Math.min(nave.velocidad+nave.aceleracion,nave.velocidadMaxima);nave.x+=Math.cos(nave.angulo)*nave.velocidad;nave.y+=Math.sin(nave.angulo)*nave.velocidad;}
+   else nave.velocidad*=nave.frenado;
+   estado.textContent="Estado: Atacando objetivo";
+  }else{
+   nave.velocidad=0;
+   estado.textContent="Estado: Atacando desde posición";
+  }
+  if(d<750&&performance.now()-ultimoDisparo>330){disparar(true);ultimoDisparo=performance.now();}
+  objetivoUI.textContent="Objetivo: Ataque activo";
+ }else if(nave.destinoX!==null&&nave.destinoY!==null){
+  const vx=nave.destinoX-nave.x,vy=nave.destinoY-nave.y,d=Math.hypot(vx,vy);
+  if(d>9){girarHacia(Math.atan2(vy,vx));nave.velocidad=Math.min(nave.velocidad+nave.aceleracion,nave.velocidadMaxima);const avance=Math.min(nave.velocidad,d);nave.x+=Math.cos(nave.angulo)*avance;nave.y+=Math.sin(nave.angulo)*avance;}
+  else{nave.velocidad*=nave.frenado;if(nave.velocidad<.12){nave.velocidad=0;nave.destinoX=null;nave.destinoY=null;estado.textContent="Estado: En posición";}}
+ }else{nave.velocidad*=nave.frenado;if(nave.velocidad<.08)nave.velocidad=0;}
+ nave.x=Math.max(25,Math.min(ancho-25,nave.x));nave.y=Math.max(25,Math.min(alto-25,nave.y));
 }
-
-function actualizar() {
-
-    actualizarMovimiento();
-
-    disparos.forEach(d => {
-        d.x += d.vx;
-        d.y += d.vy;
-        d.vida--;
-    });
-
-    disparos = disparos.filter(d => d.vida > 0);
-
-    enemigos.forEach(e => {
-
-        const a = Math.atan2(
-            nave.y - e.y,
-            nave.x - e.x
-        );
-
-        e.x += Math.cos(a) * e.velocidad;
-        e.y += Math.sin(a) * e.velocidad;
-
-        disparos.forEach(d => {
-            const distancia = Math.hypot(
-                d.x - e.x,
-                d.y - e.y
-            );
-
-            if (distancia < e.radio + 4 && !d.gastado) {
-                d.gastado = true;
-                e.vida--;
-
-                explosion(d.x, d.y, "#00eaff");
-
-                if (e.vida <= 0 && !e.destruido) {
-                    e.destruido = true;
-                    destruidos++;
-
-                    explosion(e.x, e.y, "#ff2b91");
-
-                    if (nave.objetivo === e) {
-                        nave.objetivo = null;
-                        estado.textContent = "Estado: Objetivo destruido";
-                    }
-                }
-            }
-        });
-    });
-
-    enemigos = enemigos.filter(e => !e.destruido);
-
-    disparos = disparos.filter(d => !d.gastado);
-
-    if (enemigos.length < 6) crearEnemigo();
-
-    particulas.forEach(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vida--;
-    });
-
-    particulas = particulas.filter(p => p.vida > 0);
-
-    estadisticas.textContent =
-        `Objetivos: ${enemigos.length} | Destruidos: ${destruidos}`;
-}
-
-function dibujarNave() {
-
-    ctx.save();
-    ctx.translate(nave.x, nave.y);
-    ctx.rotate(nave.angulo);
-
-    // Propulsores: reaccionan a la velocidad.
-    const intensidad = nave.velocidad / nave.velocidadMaxima;
-
-    ctx.shadowBlur = 15 + intensidad * 20;
-    ctx.shadowColor = "#00ffc8";
-    ctx.fillStyle = "#00ffc8";
-
-    ctx.beginPath();
-    ctx.moveTo(-17, -8);
-    ctx.lineTo(-34 - intensidad * 12, 0);
-    ctx.lineTo(-17, 8);
-    ctx.fill();
-
-    // Cuerpo de GRUPTO.
-    ctx.shadowColor = "#00eaff";
-    ctx.shadowBlur = 20;
-    ctx.fillStyle = "#9baebc";
-    ctx.strokeStyle = "#00eaff";
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    ctx.moveTo(27, 0);
-    ctx.lineTo(8, -11);
-    ctx.lineTo(-13, -9);
-    ctx.lineTo(-22, 0);
-    ctx.lineTo(-13, 9);
-    ctx.lineTo(8, 11);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Núcleo frontal.
-    ctx.fillStyle = "#ff2b91";
-    ctx.shadowColor = "#ff2b91";
-
-    ctx.beginPath();
-    ctx.arc(12, 0, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-}
-
-function dibujarEnemigo(e) {
-
-    ctx.save();
-    ctx.translate(e.x, e.y);
-
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = "#ff2b91";
-    ctx.fillStyle = "#58113c";
-    ctx.strokeStyle = "#ff2b91";
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    ctx.arc(0, 0, e.radio, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = "#fff";
-
-    ctx.beginPath();
-    ctx.arc(0, 0, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Indicador del objetivo seleccionado.
-    if (nave.objetivo === e) {
-        ctx.strokeStyle = "#00eaff";
-        ctx.lineWidth = 2;
-        ctx.shadowColor = "#00eaff";
-
-        ctx.beginPath();
-        ctx.arc(0, 0, 26, 0, Math.PI * 2);
-        ctx.stroke();
+function actualizar(){
+ actualizarMovimiento();
+ disparos.forEach(d=>{d.x+=d.vx;d.y+=d.vy;d.vida--;});disparos=disparos.filter(d=>d.vida>0);
+ enemigos.forEach(e=>{
+  e.fase+=.035+e.velocidad*.012;
+  const hacia=Math.atan2(nave.y-e.y,nave.x-e.x);
+  const distancia=Math.hypot(nave.x-e.x,nave.y-e.y);
+  const lateral=Math.sin(e.fase)*(.45+e.tipo*.16);
+  const avance=e.tipo===0?e.velocidad*.72:e.velocidad;
+  const orbita=e.tipo===2?Math.cos(e.fase)*.45:0;
+  e.x+=Math.cos(hacia)*avance+Math.cos(hacia+Math.PI/2)*(lateral+orbita);
+  e.y+=Math.sin(hacia)*avance+Math.sin(hacia+Math.PI/2)*(lateral+orbita);
+  if(distancia<115){e.x-=Math.cos(hacia)*e.velocidad*.55;e.y-=Math.sin(hacia)*e.velocidad*.55;}
+  disparos.forEach(d=>{
+   if(d.gastado||(d.objetivo&&d.objetivo!==e))return;
+   if(Math.hypot(d.x-e.x,d.y-e.y)<e.radio+4){
+    d.gastado=true;e.vida--;explosion(d.x,d.y,"#00eaff");
+    if(e.vida<=0&&!e.destruido){
+     e.destruido=true;destruidos++;explosion(e.x,e.y,"#ff2b91");
+     if(nave.seleccionado===e){nave.seleccionado=null;nave.atacando=false;objetivoUI.textContent="Objetivo: Destruido";estado.textContent="Estado: Objetivo destruido";}
     }
-
-    ctx.restore();
+   }
+  });
+ });
+ enemigos=enemigos.filter(e=>!e.destruido);disparos=disparos.filter(d=>!d.gastado);
+ if(enemigos.length<6)crearEnemigo();
+ particulas.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vida--;});particulas=particulas.filter(p=>p.vida>0);
+ estadisticas.textContent=`Objetivos: ${enemigos.length} | Destruidos: ${destruidos}`;
 }
-
-function dibujar() {
-
-    ctx.clearRect(0, 0, ancho, alto);
-
-    ctx.fillStyle = "#030611";
-    ctx.fillRect(0, 0, ancho, alto);
-
-    // Estrellas.
-    estrellas.forEach(e => {
-        ctx.fillStyle = "rgba(180,230,255,.65)";
-        ctx.fillRect(e.x, e.y, e.r, e.r);
-    });
-
-    // Punto de navegación.
-    if (nave.destinoX !== null) {
-        ctx.save();
-
-        ctx.strokeStyle = "#00eaff";
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "#00eaff";
-
-        ctx.beginPath();
-        ctx.arc(nave.destinoX, nave.destinoY, 9, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(nave.destinoX - 14, nave.destinoY);
-        ctx.lineTo(nave.destinoX + 14, nave.destinoY);
-        ctx.moveTo(nave.destinoX, nave.destinoY - 14);
-        ctx.lineTo(nave.destinoX, nave.destinoY + 14);
-        ctx.stroke();
-
-        ctx.restore();
-    }
-
-    // Láseres.
-    disparos.forEach(d => {
-        ctx.save();
-
-        ctx.shadowBlur = 18;
-        ctx.shadowColor = "#00eaff";
-        ctx.strokeStyle = "#00eaff";
-        ctx.lineWidth = 3;
-
-        ctx.beginPath();
-        ctx.moveTo(d.x - d.vx, d.y - d.vy);
-        ctx.lineTo(d.x, d.y);
-        ctx.stroke();
-
-        ctx.restore();
-    });
-
-    enemigos.forEach(dibujarEnemigo);
-
-    // Explosiones.
-    particulas.forEach(p => {
-        ctx.globalAlpha = Math.max(0, p.vida / 25);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, 3, 3);
-        ctx.globalAlpha = 1;
-    });
-
-    dibujarNave();
+function dibujarNave(){
+ ctx.save();ctx.translate(nave.x,nave.y);ctx.rotate(nave.angulo);
+ const intensidad=nave.velocidad/nave.velocidadMaxima;
+ ctx.shadowBlur=15+intensidad*20;ctx.shadowColor="#00ffc8";ctx.fillStyle="#00ffc8";
+ ctx.beginPath();ctx.moveTo(-17,-8);ctx.lineTo(-34-intensidad*12,0);ctx.lineTo(-17,8);ctx.fill();
+ ctx.shadowColor="#00eaff";ctx.shadowBlur=20;ctx.fillStyle="#9baebc";ctx.strokeStyle="#00eaff";ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(27,0);ctx.lineTo(8,-11);ctx.lineTo(-13,-9);ctx.lineTo(-22,0);ctx.lineTo(-13,9);ctx.lineTo(8,11);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.fillStyle="#ff2b91";ctx.shadowColor="#ff2b91";ctx.beginPath();ctx.arc(12,0,4,0,Math.PI*2);ctx.fill();ctx.restore();
 }
-
-function bucle() {
-    actualizar();
-    dibujar();
-    requestAnimationFrame(bucle);
+function dibujarEnemigo(e){
+ const pulso=1+Math.sin(e.fase*2.2+e.pulso)*.09;
+ const giro=e.fase*e.giro*.35;
+ ctx.save();ctx.translate(e.x,e.y);ctx.rotate(giro);ctx.scale(pulso,1/pulso);
+ ctx.shadowBlur=17+Math.sin(e.fase*3)*5;ctx.shadowColor=e.tipo===1?"#ff8a32":"#ff2b91";
+ const color=e.tipo===1?"#ff8a32":e.tipo===2?"#b45cff":"#ff2b91";
+ // Aletas/tentáculos animados
+ for(let i=0;i<4;i++){
+  const lado=i%2===0?-1:1, fila=Math.floor(i/2);
+  const ondula=Math.sin(e.fase*2.8+i*1.7)*5;
+  ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();
+  ctx.moveTo(-7,lado*7);
+  ctx.quadraticCurveTo(-19-ondula,lado*(17+fila*4),-27-ondula,lado*(25+fila*5));
+  ctx.stroke();
+ }
+ // Cuerpo alienígena con placas
+ ctx.fillStyle=e.tipo===1?"#542b13":e.tipo===2?"#32164f":"#58113c";
+ ctx.strokeStyle=color;ctx.lineWidth=2.2;
+ ctx.beginPath();
+ ctx.moveTo(19,0);ctx.lineTo(9,-12);ctx.lineTo(-5,-16);ctx.lineTo(-19,-7);
+ ctx.lineTo(-16,7);ctx.lineTo(-5,16);ctx.lineTo(9,12);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.fillStyle="#ffd9f2";ctx.shadowBlur=12;ctx.beginPath();ctx.arc(5,0,5+Math.sin(e.fase*4)*1.2,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle=color;ctx.shadowBlur=14;ctx.beginPath();ctx.arc(-9,-5,2.5,0,Math.PI*2);ctx.arc(-9,5,2.5,0,Math.PI*2);ctx.fill();
+ // Barra de vida
+ ctx.rotate(-giro);ctx.scale(1/pulso,pulso);
+ ctx.shadowBlur=0;ctx.fillStyle="#211522";ctx.fillRect(-19,-31,38,4);
+ ctx.fillStyle=color;ctx.fillRect(-19,-31,38*Math.max(0,e.vida/e.vidaMaxima),4);
+ if(nave.seleccionado===e){ctx.strokeStyle=nave.atacando?"#ff2b91":"#00eaff";ctx.lineWidth=2;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=13;ctx.beginPath();ctx.arc(0,0,31,0,Math.PI*2);ctx.stroke();}
+ ctx.restore();
 }
-
+function dibujar(){
+ ctx.clearRect(0,0,ancho,alto);ctx.fillStyle="#030611";ctx.fillRect(0,0,ancho,alto);
+ estrellas.forEach(e=>{ctx.fillStyle="rgba(180,230,255,.65)";ctx.fillRect(e.x,e.y,e.r,e.r);});
+ if(nave.destinoX!==null){ctx.save();ctx.strokeStyle="#00eaff";ctx.shadowBlur=12;ctx.shadowColor="#00eaff";ctx.beginPath();ctx.arc(nave.destinoX,nave.destinoY,9,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(nave.destinoX-14,nave.destinoY);ctx.lineTo(nave.destinoX+14,nave.destinoY);ctx.moveTo(nave.destinoX,nave.destinoY-14);ctx.lineTo(nave.destinoX,nave.destinoY+14);ctx.stroke();ctx.restore();}
+ disparos.forEach(d=>{ctx.save();ctx.shadowBlur=18;ctx.shadowColor="#00eaff";ctx.strokeStyle="#00eaff";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(d.x-d.vx,d.y-d.vy);ctx.lineTo(d.x,d.y);ctx.stroke();ctx.restore();});
+ enemigos.forEach(dibujarEnemigo);
+ particulas.forEach(p=>{ctx.globalAlpha=Math.max(0,p.vida/25);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,3);ctx.globalAlpha=1;});
+ dibujarNave();
+}
+function bucle(){actualizar();dibujar();requestAnimationFrame(bucle);}
 bucle();
-
 </script>
 </body>
 </html>
